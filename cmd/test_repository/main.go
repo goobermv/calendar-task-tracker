@@ -6,7 +6,8 @@ import (
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/config"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/database"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/logger"
-	"github.com/goobermv/calendar-task-tracker/internal/network/repositories/postgres"
+	"github.com/goobermv/calendar-task-tracker/internal/repositories/postgres"
+
 	"github.com/google/uuid"
 )
 

@@ -16,7 +16,7 @@ import (
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/logger"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/handlers"
-	"github.com/goobermv/calendar-task-tracker/internal/network/repositories/postgres"
+	"github.com/goobermv/calendar-task-tracker/internal/repositories/postgres"
 	eventUsecases "github.com/goobermv/calendar-task-tracker/internal/usescases/event"
 	taskUsecases "github.com/goobermv/calendar-task-tracker/internal/usescases/task"
 	userUsecases "github.com/goobermv/calendar-task-tracker/internal/usescases/user"

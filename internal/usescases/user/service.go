@@ -7,7 +7,8 @@ import (
 
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/auth"
-	"github.com/goobermv/calendar-task-tracker/internal/usescases/interfaces/repositories"
+	repositories "github.com/goobermv/calendar-task-tracker/internal/repositories/interfaces"
+
 	"github.com/google/uuid"
 )
 
