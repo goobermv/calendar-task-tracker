@@ -1,2 +1,2 @@
-calendar-task-tracker/data/app.log
-calendar-task-tracker/.env.dbinfo
+*.log
+*.env*

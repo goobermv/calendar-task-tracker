@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/auth"
-	"github.com/goobermv/calendar-task-tracker/internal/interfaces/api/dto"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 )
 
 func AuthMiddleware(jwtService *auth.JWTService) gin.HandlerFunc {

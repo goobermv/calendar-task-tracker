@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/goobermv/calendar-task-tracker/internal/interfaces/api/dto"
-	"github.com/goobermv/calendar-task-tracker/internal/interfaces/api/middleware"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	eventUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/event"
 	"github.com/google/uuid"
 )
