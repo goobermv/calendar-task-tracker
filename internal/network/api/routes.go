@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/auth"
-	"github.com/goobermv/calendar-task-tracker/internal/interfaces/api/handlers"
-	"github.com/goobermv/calendar-task-tracker/internal/interfaces/api/middleware"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/handlers"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 )
 
 func SetupRoutes(
