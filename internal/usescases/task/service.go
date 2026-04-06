@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	repositories "github.com/goobermv/calendar-task-tracker/internal/repositories/interfaces"
 
 	"github.com/google/uuid"
@@ -23,15 +24,7 @@ func NewService(taskRepo repositories.TaskRepository, userRepo repositories.User
 	}
 }
 
-type CreateTaskRequest struct {
-	UserID      uuid.UUID `json:"user_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	DueDate     time.Time `json:"due_date"`
-	Priority    string    `json:"priority"`
-}
-
-func (s *Service) CreateTask(req CreateTaskRequest) (*domain.Task, error) {
+func (s *Service) CreateTask(req dto.CreateTaskRequest) (*domain.Task, error) {
 	if req.Title == "" {
 		return nil, errors.New("title is required")
 	}
@@ -67,15 +60,7 @@ func (s *Service) CreateTask(req CreateTaskRequest) (*domain.Task, error) {
 	return task, nil
 }
 
-type UpdateTaskRequest struct {
-	Title       *string    `json:"title"`
-	Description *string    `json:"description"`
-	DueDate     *time.Time `json:"due_date"`
-	Priority    *string    `json:"priority"`
-	Status      *string    `json:"status"`
-}
-
-func (s *Service) UpdateTask(taskID, userID uuid.UUID, req UpdateTaskRequest) (*domain.Task, error) {
+func (s *Service) UpdateTask(taskID, userID uuid.UUID, req dto.UpdateTaskRequest) (*domain.Task, error) {
 	task, err := s.taskRepo.FindByID(taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find task by ID: %w", err)

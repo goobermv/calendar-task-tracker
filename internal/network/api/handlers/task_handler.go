@@ -51,7 +51,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	useCaseReq := taskUsecase.CreateTaskRequest{
+	useCaseReq := dto.CreateTaskRequest{
 		UserID:      userID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -195,7 +195,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	useCaseReq := taskUsecase.UpdateTaskRequest{
+	useCaseReq := dto.UpdateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,

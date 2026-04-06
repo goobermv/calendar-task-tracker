@@ -31,7 +31,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	userCaseReq := userUsecase.RegisterRequest{
+	userCaseReq := dto.RegisterRequest{
 		Email:    req.Email,
 		Username: req.Username,
 		Password: req.Password,
@@ -53,7 +53,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	userResponse := dto.UserResponse{
-		ID:        response.User.ID.String(),
+		ID:        response.User.ID,
 		Email:     response.User.Email,
 		Username:  response.User.Username,
 		UserType:  string(response.User.UserType),
@@ -78,7 +78,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	userUseReq := userUsecase.LoginRequest{
+	userUseReq := dto.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
 	}
@@ -94,7 +94,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	userResponse := dto.UserResponse{
-		ID:        response.User.ID.String(),
+		ID:        response.User.ID,
 		Email:     response.User.Email,
 		Username:  response.User.Username,
 		UserType:  string(response.User.UserType),

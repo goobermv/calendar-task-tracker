@@ -1,8 +1,13 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CreateEventRequest struct {
+	UserID      uuid.UUID `json:"user_id"`
 	Title       string    `json:"title" binging:"required,min=1,max=255"`
 	Description string    `json:"description"`
 	StartTime   time.Time `json:"start_time"`
@@ -20,7 +25,7 @@ type UpdateEventRequest struct {
 
 type EventResponse struct {
 	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
+	UserID      uuid.UUID `json:"user_id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	StartTime   time.Time `json:"start_time"`

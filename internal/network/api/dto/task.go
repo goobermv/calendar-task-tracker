@@ -1,8 +1,13 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CreateTaskRequest struct {
+	UserID      uuid.UUID `json:"user_id"`
 	Title       string    `json:"title" binging:"required,min=1,max=255"`
 	Description string    `json:"description"`
 	Priority    string    `json:"priority" binding:"omitempty,oneof=low medium high urgent"`

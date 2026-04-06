@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	repositories "github.com/goobermv/calendar-task-tracker/internal/repositories/interfaces"
 	"github.com/google/uuid"
 )
@@ -22,16 +23,7 @@ func NewService(eventRepo repositories.EventRepository, userRepo repositories.Us
 	}
 }
 
-type CreateEventRequest struct {
-	UserID      uuid.UUID `json:"user_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	EventType   string    `json:"event_type"`
-}
-
-func (s *Service) CreateEvent(req CreateEventRequest) (*domain.Event, error) {
+func (s *Service) CreateEvent(req dto.CreateEventRequest) (*domain.Event, error) {
 	if req.Title == "" {
 		return nil, errors.New("title is required")
 	}
@@ -80,15 +72,7 @@ func (s *Service) CreateEvent(req CreateEventRequest) (*domain.Event, error) {
 	return event, nil
 }
 
-type UpdateEventRequest struct {
-	Title       *string    `json:"title"`
-	Description *string    `json:"description"`
-	StartTime   *time.Time `json:"start_time"`
-	EndTime     *time.Time `json:"end_time"`
-	EventType   *string    `json:"event_type"`
-}
-
-func (s *Service) UpdateEvent(eventID, userID uuid.UUID, req UpdateEventRequest) (*domain.Event, error) {
+func (s *Service) UpdateEvent(eventID, userID uuid.UUID, req dto.UpdateEventRequest) (*domain.Event, error) {
 	event, err := s.eventRepo.FindByID(eventID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find event by ID: %w", err)
