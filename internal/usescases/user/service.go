@@ -7,6 +7,8 @@ import (
 
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/auth"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
+	"github.com/goobermv/calendar-task-tracker/internal/network/api/mapper"
 	repositories "github.com/goobermv/calendar-task-tracker/internal/repositories/interfaces"
 
 	"github.com/google/uuid"
@@ -26,18 +28,7 @@ func NewService(userRepo repositories.UserRepository, passwordService *auth.Pass
 	}
 }
 
-type RegisterRequest struct {
-	Email    string
-	Username string
-	Password string
-}
-
-type RegisterResponce struct {
-	User  *domain.User `json:"user"`
-	Token string       `json:"token"`
-}
-
-func (s *Service) Register(req RegisterRequest) (*RegisterResponce, error) {
+func (s *Service) Register(req dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	existing_email, _ := s.userRepo.FindByEmail(req.Email)
 	if existing_email != nil {
 		return nil, fmt.Errorf("user with this email already exists")
@@ -74,23 +65,15 @@ func (s *Service) Register(req RegisterRequest) (*RegisterResponce, error) {
 
 	user.PasswordHash = ""
 
-	return &RegisterResponce{
-		User:  &user,
+	userResponse := mapper.UserToUserResponse(&user)
+
+	return &dto.RegisterResponse{
+		User:  *userResponse,
 		Token: token,
 	}, nil
 }
 
-type LoginRequest struct {
-	Email    string
-	Password string
-}
-
-type LoginResponse struct {
-	User  *domain.User `json:"user"`
-	Token string       `json:"token"`
-}
-
-func (s *Service) Login(req LoginRequest) (*LoginResponse, error) {
+func (s *Service) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
@@ -110,8 +93,10 @@ func (s *Service) Login(req LoginRequest) (*LoginResponse, error) {
 
 	user.PasswordHash = ""
 
-	return &LoginResponse{
-		User:  user,
+	userResonse := mapper.UserToUserResponse(user)
+
+	return &dto.LoginResponse{
+		User:  *userResonse,
 		Token: token,
 	}, nil
 }

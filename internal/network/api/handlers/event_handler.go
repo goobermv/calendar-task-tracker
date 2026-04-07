@@ -49,7 +49,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		})
 	}
 
-	useCaseReq := eventUsecase.CreateEventRequest{
+	useCaseReq := dto.CreateEventRequest{
 		UserID:      userID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -74,7 +74,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 
 	response := dto.EventResponse{
 		ID:          event.ID.String(),
-		UserID:      event.UserID.String(),
+		UserID:      event.UserID,
 		Title:       event.Title,
 		Description: event.Description,
 		StartTime:   event.StartTime,
@@ -137,7 +137,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 
 	response := dto.EventResponse{
 		ID:          event.ID.String(),
-		UserID:      event.UserID.String(),
+		UserID:      event.UserID,
 		Title:       event.Title,
 		Description: event.Description,
 		StartTime:   event.StartTime,
@@ -194,7 +194,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	useCaseReq := eventUsecase.UpdateEventRequest{
+	useCaseReq := dto.UpdateEventRequest{
 		Title:       req.Title,
 		Description: req.Description,
 		StartTime:   req.StartTime,
@@ -220,7 +220,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 
 	response := dto.EventResponse{
 		ID:          event.ID.String(),
-		UserID:      event.UserID.String(),
+		UserID:      event.UserID,
 		Title:       event.Title,
 		Description: event.Description,
 		StartTime:   event.StartTime,
