@@ -93,7 +93,7 @@ func (r *UserRepository) FindByEmail(email string) (*domain.User, error) {
 	return user, nil
 }
 
-func (r *UserRepository) Update(user *domain.User, id uuid.UUID) error { // think about whether id uuid.UUID is actually needed here and how to update each field individaully
+func (r *UserRepository) Update(user *domain.User) error {
 	user.UpdatedAt = time.Now()
 
 	query := `UPDATE users

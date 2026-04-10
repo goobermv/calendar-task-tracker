@@ -10,6 +10,6 @@ type UserRepository interface {
 	FindByID(id uuid.UUID) (*domain.User, error)
 	FindByUsername(username string) (*domain.User, error)
 	FindByEmail(email string) (*domain.User, error)
-	Update(user *domain.User, id uuid.UUID) error
+	Update(user *domain.User) error
 	Delete(id uuid.UUID) error
 }

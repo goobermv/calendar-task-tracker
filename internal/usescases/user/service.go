@@ -113,3 +113,61 @@ func (s *Service) GetUserByID(userID uuid.UUID) (*domain.User, error) {
 	user.PasswordHash = ""
 	return user, nil
 }
+
+func (s *Service) UpdateUser(userID uuid.UUID, req dto.UpdateUserRequest) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	if user.ID != userID {
+		return nil, errors.New("you do not have the permissions to update this user")
+	}
+
+	if req.Email != nil {
+		existing_email, _ := s.userRepo.FindByEmail(*req.Email)
+		if existing_email != nil {
+			return nil, fmt.Errorf("user with this email already exists")
+		}
+		user.Email = *req.Email
+	}
+
+	if req.Username != nil {
+		existing_user, _ := s.userRepo.FindByUsername(*req.Username)
+		if existing_user != nil {
+			return nil, fmt.Errorf("user with this username already exists")
+		}
+		user.Username = *req.Username
+	}
+
+	user.UpdatedAt = time.Now()
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s *Service) DeleteUser(userID uuid.UUID) error {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	if user.ID != userID {
+		return errors.New("you do not have the permissions to delete this user")
+	}
+
+	if err := s.userRepo.Delete(userID); err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return nil
+}

@@ -148,3 +148,107 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		UpdatedAt: user.UpdatedAt,
 	})
 }
+
+func (h *UserHandler) UpdateUser(c *gin.Context) {
+	userIDstr, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Details: "User not authenticated",
+		})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDstr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Invalid user ID",
+			Code:    http.StatusBadRequest,
+			Details: err.Error(),
+		})
+		return
+	}
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Validation failed",
+			Code:    http.StatusBadRequest,
+			Details: err.Error(),
+		})
+		return
+	}
+
+	useCaseReq := dto.UpdateUserRequest{
+		Email:    req.Email,
+		Username: req.Username,
+	}
+
+	user, err := h.userService.UpdateUser(userID, useCaseReq)
+	if err != nil {
+		statusCode := http.StatusBadRequest
+		if err.Error() == "user not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "you do not have the permissions to update this user" {
+			statusCode = http.StatusForbidden
+		}
+		c.JSON(statusCode, dto.ErrorResponse{
+			Error:   "Failed to update user",
+			Code:    statusCode,
+			Details: err.Error(),
+		})
+		return
+	}
+
+	response := dto.UserResponse{
+		ID:        user.ID.String(),
+		Email:     user.Email,
+		Username:  user.Username,
+		UserType:  user.UserType,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	userIDStr, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Details: "User not authenticated",
+		})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Invalid user ID",
+			Code:    http.StatusBadRequest,
+			Details: err.Error(),
+		})
+		return
+	}
+
+	err = h.userService.DeleteUser(userID)
+	if err != nil {
+		statusCode := http.StatusBadRequest
+		if err.Error() == "user not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "you do not have the permissions to delete this user" {
+			statusCode = http.StatusForbidden
+		}
+		c.JSON(statusCode, dto.ErrorResponse{
+			Error:   "Failed to delete user",
+			Code:    statusCode,
+			Details: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
