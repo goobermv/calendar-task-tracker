@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	userUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/user"
-	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -23,32 +24,13 @@ func NewUserHandler(userService *userUsecase.Service) *UserHandler {
 func (h *UserHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Validation failed",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		domain.HandleValidationError(c, err)
 		return
 	}
 
-	userCaseReq := dto.RegisterRequest{
-		Email:    req.Email,
-		Username: req.Username,
-		Password: req.Password,
-	}
-
-	response, err := h.userService.Register(userCaseReq)
+	response, err := h.userService.Register(req)
 	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "user with this email already exists" || err.Error() == "user with this username already exists" {
-			statusCode = http.StatusConflict
-		}
-
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   err.Error(),
-			Code:    statusCode,
-			Details: "Please check your input and try again",
-		})
+		domain.HandleAlreadyExistsError(c, err)
 		return
 	}
 
@@ -70,26 +52,12 @@ func (h *UserHandler) Register(c *gin.Context) {
 func (h *UserHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Validation failed",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		domain.HandleValidationError(c, err)
 		return
 	}
-
-	userUseReq := dto.LoginRequest{
-		Email:    req.Email,
-		Password: req.Password,
-	}
-
-	response, err := h.userService.Login(userUseReq)
+	response, err := h.userService.Login(req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   err.Error(),
-			Code:    http.StatusUnauthorized,
-			Details: "Email or password is incorrect",
-		})
+		domain.HandleIncorrectInfoError(c, err)
 		return
 	}
 
@@ -109,33 +77,15 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	userIDstr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDstr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		domain.HandleUnathorizedError(c)
 		return
 	}
 
 	user, err := h.userService.GetUserByID(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, dto.ErrorResponse{
-			Error:   "User not found",
-			Code:    http.StatusNotFound,
-			Details: err.Error(),
-		})
+		domain.HandleUserNotFoundError(c, err)
 		return
 	}
 
@@ -145,59 +95,26 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		Username:  user.Username,
 		UserType:  string(user.UserType),
 		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		UpdatedAt: time.Now(),
 	})
 }
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
-	userIDstr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDstr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		domain.HandleUnathorizedError(c)
 		return
 	}
 
 	var req dto.UpdateUserRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Validation failed",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		domain.HandleValidationError(c, err)
 		return
 	}
 
-	useCaseReq := dto.UpdateUserRequest{
-		Email:    req.Email,
-		Username: req.Username,
-	}
-
-	user, err := h.userService.UpdateUser(userID, useCaseReq)
+	user, err := h.userService.UpdateUser(userID, req)
 	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "user not found" {
-			statusCode = http.StatusNotFound
-		} else if err.Error() == "you do not have the permissions to update this user" {
-			statusCode = http.StatusForbidden
-		}
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   "Failed to update user",
-			Code:    statusCode,
-			Details: err.Error(),
-		})
+		domain.HandleUpdateUserError(c, err)
 		return
 	}
 
@@ -205,48 +122,24 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		ID:        user.ID.String(),
 		Email:     user.Email,
 		Username:  user.Username,
-		UserType:  user.UserType,
+		UserType:  string(user.UserType),
 		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		UpdatedAt: time.Now(),
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	userIDStr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
+		domain.HandleUnathorizedError(c)
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	err := h.userService.DeleteUser(userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
-		return
-	}
-
-	err = h.userService.DeleteUser(userID)
-	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "user not found" {
-			statusCode = http.StatusNotFound
-		} else if err.Error() == "you do not have the permissions to delete this user" {
-			statusCode = http.StatusForbidden
-		}
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   "Failed to delete user",
-			Code:    statusCode,
-			Details: err.Error(),
-		})
+		domain.HandleDeleteUserError(c, err)
 		return
 	}
 

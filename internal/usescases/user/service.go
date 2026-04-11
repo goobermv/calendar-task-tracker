@@ -143,6 +143,19 @@ func (s *Service) UpdateUser(userID uuid.UUID, req dto.UpdateUserRequest) (*doma
 		user.Username = *req.Username
 	}
 
+	if req.Password != nil {
+		hashedPassword, err := s.passwordService.Hash(*req.Password)
+		if err != nil {
+			return nil, errors.New("failed to process password")
+		}
+
+		if user.PasswordHash == hashedPassword {
+			return nil, errors.New("new password cannot be the same as old password")
+		}
+
+		user.PasswordHash = hashedPassword
+	}
+
 	user.UpdatedAt = time.Now()
 
 	if err := s.userRepo.Update(user); err != nil {
@@ -159,10 +172,6 @@ func (s *Service) DeleteUser(userID uuid.UUID) error {
 	}
 	if user == nil {
 		return errors.New("user not found")
-	}
-
-	if user.ID != userID {
-		return errors.New("you do not have the permissions to delete this user")
 	}
 
 	if err := s.userRepo.Delete(userID); err != nil {
