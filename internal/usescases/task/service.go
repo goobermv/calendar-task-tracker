@@ -37,7 +37,7 @@ func (s *Service) CreateTask(req dto.CreateTaskRequest) (*domain.Task, error) {
 		return nil, fmt.Errorf("failed to verify user: %w", err)
 	}
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, domain.ErrUserNotFound
 	}
 
 	now := time.Now()
@@ -54,7 +54,7 @@ func (s *Service) CreateTask(req dto.CreateTaskRequest) (*domain.Task, error) {
 	}
 
 	if err := s.taskRepo.Create(task); err != nil {
-		return nil, fmt.Errorf("failed to create task: %w", err)
+		return nil, domain.ErrFailedToCreateTask
 	}
 
 	return task, nil
@@ -66,11 +66,11 @@ func (s *Service) UpdateTask(taskID, userID uuid.UUID, req dto.UpdateTaskRequest
 		return nil, fmt.Errorf("failed to find task by ID: %w", err)
 	}
 	if task == nil {
-		return nil, errors.New("task not found")
+		return nil, domain.ErrTaskNotFound
 	}
 
 	if task.UserID != userID {
-		return nil, errors.New("you do not have the permissions to update this task")
+		return nil, domain.ErrNoPermissionUpdateTask
 	}
 
 	if req.Title != nil {
@@ -135,11 +135,11 @@ func (s *Service) DeleteTask(taskID, userID uuid.UUID) error {
 		return fmt.Errorf("failed to find task by ID: %w", err)
 	}
 	if task == nil {
-		return errors.New("task not found")
+		return domain.ErrTaskNotFound
 	}
 
 	if task.UserID != userID {
-		return errors.New("you do not have the permissions to delete this task")
+		return domain.ErrNoPermissionDeleteTask
 	}
 
 	if err := s.taskRepo.Delete(taskID); err != nil {
@@ -155,11 +155,11 @@ func (s *Service) GetTaskByID(taskID, userID uuid.UUID) (*domain.Task, error) {
 		return nil, fmt.Errorf("failed to find task by ID: %w", err)
 	}
 	if task == nil {
-		return nil, errors.New("task not found")
+		return nil, domain.ErrTaskNotFound
 	}
 
 	if task.UserID != userID {
-		return nil, errors.New("you do not have the permissions to view this task")
+		return nil, domain.ErrNoPermissionViewTask
 	}
 
 	return task, nil

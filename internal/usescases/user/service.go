@@ -31,12 +31,12 @@ func NewService(userRepo repositories.UserRepository, passwordService *auth.Pass
 func (s *Service) Register(req dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	existing_email, _ := s.userRepo.FindByEmail(req.Email)
 	if existing_email != nil {
-		return nil, fmt.Errorf("user with this email already exists")
+		return nil, domain.ErrEmailExists
 	}
 
 	existing_user, _ := s.userRepo.FindByUsername(req.Username)
 	if existing_user != nil {
-		return nil, fmt.Errorf("user with this username already exists")
+		return nil, domain.ErrUsernameExists
 	}
 
 	hashedPassword, err := s.passwordService.Hash(req.Password)
@@ -76,14 +76,14 @@ func (s *Service) Register(req dto.RegisterRequest) (*dto.RegisterResponse, erro
 func (s *Service) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, domain.ErrInvalidCredentials
 	}
 	if user == nil {
-		return nil, errors.New("invalid credentails")
+		return nil, domain.ErrInvalidCredentials
 	}
 
 	if !s.passwordService.Verify(req.Password, user.PasswordHash) {
-		return nil, errors.New("invalid credentials")
+		return nil, domain.ErrInvalidCredentials
 	}
 
 	token, err := s.jwtService.GenerateToken(user.ID, user.Email)
@@ -107,9 +107,98 @@ func (s *Service) GetUserByID(userID uuid.UUID) (*domain.User, error) {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, domain.ErrUserNotFound
 	}
 
 	user.PasswordHash = ""
 	return user, nil
+}
+
+func (s *Service) UpdateUserInfo(userID uuid.UUID, req dto.UpdateUserInfoRequest) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return nil, domain.ErrUserNotFound
+	}
+
+	if user.ID != userID {
+		return nil, domain.ErrNoPermissionUpdateUser
+	}
+
+	if req.Email != nil {
+		existing_email, _ := s.userRepo.FindByEmail(*req.Email)
+		if existing_email != nil {
+			return nil, domain.ErrEmailExists
+		}
+		user.Email = *req.Email
+	}
+
+	if req.Username != nil {
+		existing_user, _ := s.userRepo.FindByUsername(*req.Username)
+		if existing_user != nil {
+			return nil, domain.ErrUsernameExists
+		}
+		user.Username = *req.Username
+	}
+
+	user.UpdatedAt = time.Now()
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswordRequest) error {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return domain.ErrUserNotFound
+	}
+
+	if user.ID != userID {
+		return domain.ErrNoPermissionUpdateUser
+	}
+
+	if req.Password != nil {
+		hashedPassword, err := s.passwordService.Hash(*req.Password)
+		if err != nil {
+			return errors.New("failed to process password")
+		}
+
+		if user.PasswordHash == hashedPassword {
+			return errors.New("new password cannot be the same as old password")
+		}
+
+		user.PasswordHash = hashedPassword
+	}
+
+	user.UpdatedAt = time.Now()
+
+	if err := s.userRepo.Update(user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) DeleteUser(userID uuid.UUID) error {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return domain.ErrUserNotFound
+	}
+
+	if err := s.userRepo.Delete(userID); err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/auth"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
+	"github.com/google/uuid"
 )
 
 func AuthMiddleware(jwtService *auth.JWTService) gin.HandlerFunc {
@@ -58,12 +59,12 @@ func AuthMiddleware(jwtService *auth.JWTService) gin.HandlerFunc {
 	}
 }
 
-func GetUserID(c *gin.Context) (string, bool) {
+func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		return "", false
+		return uuid.UUID{}, false
 	}
 
-	userIDstr, ok := userID.(string)
-	return userIDstr, ok
+	userUUID, ok := userID.(uuid.UUID)
+	return userUUID, ok
 }
