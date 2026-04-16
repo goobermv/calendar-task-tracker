@@ -114,7 +114,7 @@ func (s *Service) GetUserByID(userID uuid.UUID) (*domain.User, error) {
 	return user, nil
 }
 
-func (s *Service) UpdateUser(userID uuid.UUID, req dto.UpdateUserRequest) (*domain.User, error) {
+func (s *Service) UpdateUserInfo(userID uuid.UUID, req dto.UpdateUserInfoRequest) (*domain.User, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user by ID: %w", err)
@@ -141,6 +141,28 @@ func (s *Service) UpdateUser(userID uuid.UUID, req dto.UpdateUserRequest) (*doma
 			return nil, fmt.Errorf("user with this username already exists")
 		}
 		user.Username = *req.Username
+	}
+
+	user.UpdatedAt = time.Now()
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswordRequest) (*domain.User, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	if user.ID != userID {
+		return nil, errors.New("you do not have the permissions to update this user")
 	}
 
 	if req.Password != nil {

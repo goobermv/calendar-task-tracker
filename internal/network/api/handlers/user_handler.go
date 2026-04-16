@@ -99,20 +99,51 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	})
 }
 
-func (h *UserHandler) UpdateUser(c *gin.Context) {
+func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
 		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
-	var req dto.UpdateUserRequest
+	var req dto.UpdateUserInfoRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		HandleError(c, err)
 		return
 	}
 
-	user, err := h.userService.UpdateUser(userID, req)
+	user, err := h.userService.UpdateUserInfo(userID, req)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	response := dto.UserResponse{
+		ID:        user.ID.String(),
+		Email:     user.Email,
+		Username:  user.Username,
+		UserType:  string(user.UserType),
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: time.Now(),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *UserHandler) UpdateUserPassword(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	var req dto.UpdateUserPasswordRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	user, err := h.userService.UpdateUserPassword(userID, req)
 	if err != nil {
 		HandleError(c, err)
 		return

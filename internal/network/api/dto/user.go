@@ -15,9 +15,12 @@ type LoginRequest struct {
 	Password string `json:"password" binging:"required"`
 }
 
-type UpdateUserRequest struct {
+type UpdateUserInfoRequest struct {
 	Email    *string `json:"email"`
 	Username *string `json:"username"`
+}
+
+type UpdateUserPasswordRequest struct {
 	Password *string `json:"password"`
 }
 

@@ -29,7 +29,7 @@ func SetupRoutes(
 	protected.Use(middleware.AuthMiddleware(jwtService))
 	{
 		protected.GET("/users/me", userHandler.GetProfile)
-		protected.PATCH("/users/:id", userHandler.UpdateUser)
+		protected.PATCH("/users/:id", userHandler.UpdateUserInfo)
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
 
 		protected.GET("/tasks", taskHandler.GetTask)
