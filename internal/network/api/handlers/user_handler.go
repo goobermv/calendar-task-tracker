@@ -24,13 +24,13 @@ func NewUserHandler(userService *userUsecase.Service) *UserHandler {
 func (h *UserHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	response, err := h.userService.Register(req)
 	if err != nil {
-		domain.HandleAlreadyExistsError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -52,12 +52,12 @@ func (h *UserHandler) Register(c *gin.Context) {
 func (h *UserHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 		return
 	}
 	response, err := h.userService.Login(req)
 	if err != nil {
-		domain.HandleIncorrectInfoError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -79,13 +79,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	user, err := h.userService.GetUserByID(userID)
 	if err != nil {
-		domain.HandleUserNotFoundError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -102,19 +102,19 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	var req dto.UpdateUserRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	user, err := h.userService.UpdateUser(userID, req)
 	if err != nil {
-		domain.HandleUpdateUserError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -133,13 +133,13 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	err := h.userService.DeleteUser(userID)
 	if err != nil {
-		domain.HandleDeleteUserError(c, err)
+		HandleError(c, err)
 		return
 	}
 

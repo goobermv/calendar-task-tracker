@@ -25,13 +25,13 @@ func NewTaskHandler(taskService *taskUsecase.Service) *TaskHandler {
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	var req dto.CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -45,7 +45,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 
 	task, err := h.taskService.CreateTask(useCaseReq)
 	if err != nil {
-		domain.HandleCreateTaskError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -67,20 +67,20 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 func (h *TaskHandler) GetTask(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	taskIDStr := c.Param("id")
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
-		domain.HandleInvalidTaskIDError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	task, err := h.taskService.GetTaskByID(taskID, userID)
 	if err != nil {
-		domain.HandleTaskError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -104,26 +104,26 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	taskIDStr := c.Param("id")
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
-		domain.HandleInvalidTaskIDError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	var req dto.UpdateTaskRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	task, err := h.taskService.UpdateTask(taskID, userID, req)
 	if err != nil {
-		domain.HandleUpdateTaskError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -145,20 +145,20 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	taskIDStr := c.Param("id")
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
-		domain.HandleInvalidTaskIDError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	err = h.taskService.DeleteTask(taskID, userID)
 	if err != nil {
-		domain.HandleDeleteTaskError(c, err)
+		HandleError(c, err)
 		return
 	}
 

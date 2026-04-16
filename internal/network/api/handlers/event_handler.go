@@ -23,13 +23,13 @@ func NewEventHandler(eventService *eventUsecase.Service) *EventHandler {
 func (h *EventHandler) CreateEvent(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	var req dto.CreateEventRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 	}
 
 	useCaseReq := dto.CreateEventRequest{
@@ -43,7 +43,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 
 	event, err := h.eventService.CreateEvent(useCaseReq)
 	if err != nil {
-		domain.HandleCreateEventError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 func (h *EventHandler) GetEvent(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 
 	event, err := h.eventService.GetEventByID(eventID, userID)
 	if err != nil {
-		domain.HandleEventError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -102,26 +102,26 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	eventIDstr := c.Param("id")
 	eventID, err := uuid.Parse(eventIDstr)
 	if err != nil {
-		domain.HandleInvalidEventIDError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	var req dto.UpdateEventRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		domain.HandleValidationError(c, err)
+		HandleError(c, err)
 		return
 	}
 
 	event, err := h.eventService.UpdateEvent(eventID, userID, req)
 	if err != nil {
-		domain.HandleUpdateEventError(c, err)
+		HandleError(c, err)
 		return
 	}
 
@@ -143,14 +143,14 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		domain.HandleUnathorizedError(c)
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	eventIDStr := c.Param("id")
 	eventID, err := uuid.Parse(eventIDStr)
 	if err != nil {
-		domain.HandleInvalidEventIDError(c, err)
+		HandleError(c, err)
 		return
 	}
 
