@@ -36,7 +36,7 @@ func (s *Service) CreateEvent(req dto.CreateEventRequest) (*domain.Event, error)
 		return nil, fmt.Errorf("failed to verify user: %w", err)
 	}
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, domain.ErrUserNotFound
 	}
 
 	if !req.StartTime.IsZero() && req.StartTime.Before(time.Now()) {
@@ -78,11 +78,11 @@ func (s *Service) UpdateEvent(eventID, userID uuid.UUID, req dto.UpdateEventRequ
 		return nil, fmt.Errorf("failed to find event by ID: %w", err)
 	}
 	if event == nil {
-		return nil, fmt.Errorf("event not found")
+		return nil, domain.ErrEventNotFound
 	}
 
 	if event.UserID != userID {
-		return nil, fmt.Errorf("you do not have the permissions to update this event")
+		return nil, domain.ErrNoPermissionUpdateEvent
 	}
 
 	if req.Title != nil {
@@ -151,11 +151,11 @@ func (s *Service) DeleteEvent(eventID, userID uuid.UUID) error {
 	}
 
 	if event == nil {
-		return errors.New("event not found")
+		return domain.ErrEventNotFound
 	}
 
 	if event.UserID != userID {
-		return errors.New("you do not have the permissions to delete this task")
+		return domain.ErrNoPermissionDeleteEvent
 	}
 
 	if err := s.eventRepo.Delete(eventID); err != nil {
@@ -172,11 +172,11 @@ func (s *Service) GetEventByID(eventID, userID uuid.UUID) (*domain.Event, error)
 	}
 
 	if event == nil {
-		return nil, errors.New("event not found")
+		return nil, domain.ErrEventNotFound
 	}
 
 	if event.UserID != userID {
-		return nil, errors.New("you do not have the permissions to delete this task")
+		return nil, domain.ErrNoPermissionViewEvent
 	}
 
 	return event, nil
