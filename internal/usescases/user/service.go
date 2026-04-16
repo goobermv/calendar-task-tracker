@@ -152,27 +152,27 @@ func (s *Service) UpdateUserInfo(userID uuid.UUID, req dto.UpdateUserInfoRequest
 	return user, nil
 }
 
-func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswordRequest) (*domain.User, error) {
+func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswordRequest) error {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user by ID: %w", err)
+		return fmt.Errorf("failed to find user by ID: %w", err)
 	}
 	if user == nil {
-		return nil, errors.New("user not found")
+		return errors.New("user not found")
 	}
 
 	if user.ID != userID {
-		return nil, errors.New("you do not have the permissions to update this user")
+		return errors.New("you do not have the permissions to update this user")
 	}
 
 	if req.Password != nil {
 		hashedPassword, err := s.passwordService.Hash(*req.Password)
 		if err != nil {
-			return nil, errors.New("failed to process password")
+			return errors.New("failed to process password")
 		}
 
 		if user.PasswordHash == hashedPassword {
-			return nil, errors.New("new password cannot be the same as old password")
+			return errors.New("new password cannot be the same as old password")
 		}
 
 		user.PasswordHash = hashedPassword
@@ -181,10 +181,10 @@ func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswor
 	user.UpdatedAt = time.Now()
 
 	if err := s.userRepo.Update(user); err != nil {
-		return nil, fmt.Errorf("failed to update user: %w", err)
+		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	return user, nil
+	return nil
 }
 
 func (s *Service) DeleteUser(userID uuid.UUID) error {

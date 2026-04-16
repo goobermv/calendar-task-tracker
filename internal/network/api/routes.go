@@ -30,6 +30,7 @@ func SetupRoutes(
 	{
 		protected.GET("/users/me", userHandler.GetProfile)
 		protected.PATCH("/users/:id", userHandler.UpdateUserInfo)
+		protected.PATCH("/users/:id", userHandler.UpdateUserPassword)
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
 
 		protected.GET("/tasks", taskHandler.GetTask)

@@ -143,22 +143,12 @@ func (h *UserHandler) UpdateUserPassword(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UpdateUserPassword(userID, req)
-	if err != nil {
+	if err := h.userService.UpdateUserPassword(userID, req); err != nil {
 		HandleError(c, err)
 		return
 	}
 
-	response := dto.UserResponse{
-		ID:        user.ID.String(),
-		Email:     user.Email,
-		Username:  user.Username,
-		UserType:  string(user.UserType),
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: time.Now(),
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{"message": "password updated successfully"})
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {

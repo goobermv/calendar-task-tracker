@@ -18,19 +18,18 @@ func HandleError(c *gin.Context, err error) {
 			Details: err.Error(),
 		})
 
-	case errors.Is(err, domain.ErrEmailExists), errors.Is(err, domain.ErrUsernameExists):
-		statusCode := http.StatusBadRequest
-		if errors.Is(err, domain.ErrEmailExists) {
-			statusCode = http.StatusConflict
-		}
-		if errors.Is(err, domain.ErrUsernameExists) {
-			statusCode = http.StatusConflict
-		}
-
-		c.JSON(statusCode, dto.ErrorResponse{
+	case errors.Is(err, domain.ErrEmailExists):
+		c.JSON(http.StatusConflict, dto.ErrorResponse{
 			Error:   err.Error(),
-			Code:    statusCode,
-			Details: "Please check your input and try again",
+			Code:    http.StatusConflict,
+			Details: "user with this email already exists",
+		})
+
+	case errors.Is(err, domain.ErrUsernameExists):
+		c.JSON(http.StatusConflict, dto.ErrorResponse{
+			Error:   err.Error(),
+			Code:    http.StatusConflict,
+			Details: "user with this username already exists",
 		})
 
 	case errors.Is(err, domain.ErrInvalidCredentials):
@@ -133,11 +132,10 @@ func HandleError(c *gin.Context, err error) {
 		})
 
 	case errors.Is(err, domain.ErrInvalidUUID):
-		resource := detectResourceType(c)
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid " + resource + " ID",
+			Error:   "Invalid ID",
 			Code:    http.StatusBadRequest,
-			Details: resource + " ID must be a valid UUID",
+			Details: "ID must be a valid UUID",
 		})
 
 	case errors.Is(err, domain.ErrForbidden):
@@ -154,31 +152,4 @@ func HandleError(c *gin.Context, err error) {
 			Details: err.Error(),
 		})
 	}
-}
-
-func detectResourceType(c *gin.Context) string {
-	path := c.FullPath()
-	if path == "" {
-		path = c.Request.URL.Path
-	}
-
-	switch {
-	case contains(path, "task"):
-		return "task"
-	case contains(path, "event"):
-		return "event"
-	case contains(path, "user"):
-		return "user"
-	default:
-		return "resource"
-	}
-}
-
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
