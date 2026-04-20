@@ -182,5 +182,19 @@ func (s *Service) GetEventByID(eventID, userID uuid.UUID) (*domain.Event, error)
 	return event, nil
 }
 
-// implement GetUserEvents function
-// implement more methods that might come in handy and think about updating the already existing methods to be better
+func (s *Service) GetUserEvents(userID uuid.UUID) ([]*domain.Event, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, domain.ErrValidation
+	}
+	if user == nil {
+		return nil, domain.ErrUserNotFound
+	}
+
+	events, err := s.eventRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user tasks: %w", err)
+	}
+
+	return events, nil
+}

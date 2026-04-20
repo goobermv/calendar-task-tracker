@@ -68,3 +68,13 @@ func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 	userUUID, ok := userID.(uuid.UUID)
 	return userUUID, ok
 }
+
+func GetID(c *gin.Context) (uuid.UUID, bool) {
+	ID, exists := c.Get("id")
+	if !exists {
+		return uuid.UUID{}, false
+	}
+
+	UUID, ok := ID.(uuid.UUID)
+	return UUID, ok
+}

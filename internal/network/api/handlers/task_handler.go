@@ -9,7 +9,6 @@ import (
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	taskUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/task"
-	"github.com/google/uuid"
 )
 
 type TaskHandler struct {
@@ -50,8 +49,8 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	response := dto.TaskResponse{
-		ID:          task.ID.String(),
-		UserID:      task.UserID.String(),
+		ID:          task.ID,
+		UserID:      task.UserID,
 		Title:       task.Title,
 		Description: task.Description,
 		Status:      task.Status,
@@ -71,10 +70,9 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 		return
 	}
 
-	taskIDStr := c.Param("id")
-	taskID, err := uuid.Parse(taskIDStr)
-	if err != nil {
-		HandleError(c, err)
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
 		return
 	}
 
@@ -85,8 +83,8 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 	}
 
 	response := dto.TaskResponse{
-		ID:          task.ID.String(),
-		UserID:      task.UserID.String(),
+		ID:          task.ID,
+		UserID:      task.UserID,
 		Title:       task.Title,
 		Description: task.Description,
 		Status:      task.Status,
@@ -99,7 +97,38 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-//implement GetUserTasks function handler
+func (h *TaskHandler) GetUserTasks(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	tasks, err := h.taskService.GetUserTasks(userID)
+	if err != nil {
+		HandleError(c, domain.ErrFailedToGetUserTasks)
+	}
+
+	responses := make([]dto.TaskResponse, len(tasks))
+	for i, task := range tasks {
+		responses[i] = dto.TaskResponse{
+			ID:          task.ID,
+			UserID:      task.UserID,
+			Title:       task.Title,
+			Description: task.Description,
+			Status:      task.Status,
+			DueDate:     task.DueDate,
+			Priority:    task.Priority,
+			CreatedAt:   task.CreatedAt,
+			UpdatedAt:   task.UpdatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tasks": responses,
+		"count": len(responses),
+	})
+}
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -108,10 +137,9 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	taskIDStr := c.Param("id")
-	taskID, err := uuid.Parse(taskIDStr)
-	if err != nil {
-		HandleError(c, err)
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
 		return
 	}
 
@@ -128,8 +156,8 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	resonse := dto.TaskResponse{
-		ID:          task.ID.String(),
-		UserID:      task.UserID.String(),
+		ID:          task.ID,
+		UserID:      task.UserID,
 		Title:       task.Title,
 		Description: task.Description,
 		Status:      task.Status,
@@ -149,14 +177,13 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 		return
 	}
 
-	taskIDStr := c.Param("id")
-	taskID, err := uuid.Parse(taskIDStr)
-	if err != nil {
-		HandleError(c, err)
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
 		return
 	}
 
-	err = h.taskService.DeleteTask(taskID, userID)
+	err := h.taskService.DeleteTask(taskID, userID)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -164,73 +191,3 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
-
-/*
-func (h *TaskHandler) CompleteTask(c *gin.Context) {
-    // 1. Get authenticated user ID
-    userIDStr, exists := middleware.GetUserID(c)
-    if !exists {
-        c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-            Error:   "Unauthorized",
-            Code:    http.StatusUnauthorized,
-            Details: "User not authenticated",
-        })
-        return
-    }
-
-    userID, err := uuid.Parse(userIDStr)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-            Error:   "Invalid user ID",
-            Code:    http.StatusBadRequest,
-            Details: err.Error(),
-        })
-        return
-    }
-
-    // 2. Parse task ID from URL
-    taskIDStr := c.Param("id")
-    taskID, err := uuid.Parse(taskIDStr)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-            Error:   "Invalid task ID",
-            Code:    http.StatusBadRequest,
-            Details: "Task ID must be a valid UUID",
-        })
-        return
-    }
-
-    // 3. Execute use case
-    task, err := h.taskService.CompleteTask(taskID, userID)
-    if err != nil {
-        statusCode := http.StatusBadRequest
-        if err.Error() == "task not found" {
-            statusCode = http.StatusNotFound
-        } else if err.Error() == "you don't have permission to update this task" {
-            statusCode = http.StatusForbidden
-        }
-        c.JSON(statusCode, dto.ErrorResponse{
-            Error:   "Failed to complete task",
-            Code:    statusCode,
-            Details: err.Error(),
-        })
-        return
-    }
-
-    // 4. Convert to response DTO
-    response := dto.TaskResponse{
-        ID:          task.ID.String(),
-        UserID:      task.UserID.String(),
-        Title:       task.Title,
-        Description: task.Description,
-        Status:      task.Status,
-        DueDate:     task.DueDate,
-        Priority:    task.Priority,
-        CreatedAt:   task.CreatedAt,
-        UpdatedAt:   task.UpdatedAt,
-    }
-
-    // 5. Send response
-    c.JSON(http.StatusOK, response)
-}
-*/

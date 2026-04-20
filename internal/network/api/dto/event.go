@@ -24,7 +24,7 @@ type UpdateEventRequest struct {
 }
 
 type EventResponse struct {
-	ID          string    `json:"id"`
+	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`

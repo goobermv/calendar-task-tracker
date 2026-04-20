@@ -165,36 +165,19 @@ func (s *Service) GetTaskByID(taskID, userID uuid.UUID) (*domain.Task, error) {
 	return task, nil
 }
 
-//implement GetUserTasks function
+func (s *Service) GetUserTasks(userID uuid.UUID) ([]*domain.Task, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, domain.ErrValidation
+	}
+	if user == nil {
+		return nil, domain.ErrUserNotFound
+	}
 
-// write out a proper status changing function and priority changing function
+	tasks, err := s.taskRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user tasks: %w", err)
+	}
 
-/*
-func (s *Service) PendingTask(taskID, userID uuid.UUID) (*domain.Task, error) {
-	pendingStatus := domain.TaskStatusPending
-	return s.UpdateTask(taskID, userID, UpdateTaskRequest{
-		Status: &pendingStatus,
-	})
+	return tasks, nil
 }
-
-func (s *Service) InProgressTask(taskID, userID uuid.UUID) (*domain.Task, error) {
-	inProgressStatus := domain.TaskStatusInProgress
-	return s.UpdateTask(taskID, userID, UpdateTaskRequest{
-		Status: &inProgressStatus,
-	})
-}
-
-func (s *Service) CompletedTask(taskID, userID uuid.UUID) (*domain.Task, error) {
-	completedStatus := domain.TaskStatusCompleted
-	return s.UpdateTask(taskID, userID, UpdateTaskRequest{
-		Status: &completedStatus,
-	})
-}
-
-func (s *Service) CancelledTask(taskID, userID uuid.UUID) (*domain.Task, error) {
-	cancelledStatus := domain.TaskStatusCancelled
-	return s.UpdateTask(taskID, userID, UpdateTaskRequest{
-		Status: &cancelledStatus,
-	})
-}
-*/

@@ -78,6 +78,13 @@ func HandleError(c *gin.Context, err error) {
 			Details: err.Error(),
 		})
 
+	case errors.Is(err, domain.ErrFailedToGetUserTasks):
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   "Failed to get user tasks",
+			Code:    http.StatusNotFound,
+			Details: err.Error(),
+		})
+
 	case errors.Is(err, domain.ErrNoPermissionViewTask):
 		c.JSON(http.StatusForbidden, dto.ErrorResponse{
 			Error:   "Failed to get task",
@@ -107,6 +114,13 @@ func HandleError(c *gin.Context, err error) {
 		c.JSON(statusCode, dto.ErrorResponse{
 			Error:   "Failed to create event",
 			Code:    statusCode,
+			Details: err.Error(),
+		})
+
+	case errors.Is(err, domain.ErrFailedToGetUserEvents):
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   "Failed to get user events",
+			Code:    http.StatusNotFound,
 			Details: err.Error(),
 		})
 

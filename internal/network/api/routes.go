@@ -34,14 +34,13 @@ func SetupRoutes(
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
 
 		protected.GET("/tasks", taskHandler.GetTask)
-		// protected.GET("/tasks", taskHandler.GetUserTasks)
+		protected.GET("/tasks", taskHandler.GetUserTasks)
 		protected.POST("/tasks", taskHandler.CreateTask)
 		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
 		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
-		// protected.PATCH("/tasks/:id/complete", taskHandler.CompleteTask)
 
 		protected.GET("/events", eventHandler.GetEvent)
-		// protected.GET("/events", taskHandler.GetUserEvents)
+		protected.GET("/events", eventHandler.GetUserEvents)
 		protected.POST("/events", eventHandler.CreateEvent)
 		protected.PUT("/events/:id", eventHandler.UpdateEvent)
 		protected.DELETE("/events/:id", eventHandler.DeleteEvent)

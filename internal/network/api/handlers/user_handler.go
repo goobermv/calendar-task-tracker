@@ -90,7 +90,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.UserResponse{
-		ID:        user.ID.String(),
+		ID:        user.ID,
 		Email:     user.Email,
 		Username:  user.Username,
 		UserType:  string(user.UserType),
@@ -119,7 +119,7 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	}
 
 	response := dto.UserResponse{
-		ID:        user.ID.String(),
+		ID:        user.ID,
 		Email:     user.Email,
 		Username:  user.Username,
 		UserType:  string(user.UserType),
