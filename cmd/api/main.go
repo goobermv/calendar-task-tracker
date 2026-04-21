@@ -43,9 +43,9 @@ func main() {
 	taskRepo := postgres.NewTaskRepository(db.GetDB())
 	eventRepo := postgres.NewEventRepository(db.GetDB())
 
-	userService := userUsecases.NewService(userRepo, passwordService, jwtService)
-	taskService := taskUsecases.NewService(taskRepo, userRepo)
-	eventService := eventUsecases.NewService(eventRepo, userRepo)
+	userService := userUsecases.NewService(userRepo, passwordService, jwtService, appLogger)
+	taskService := taskUsecases.NewService(taskRepo, userRepo, appLogger)
+	eventService := eventUsecases.NewService(eventRepo, userRepo, appLogger)
 
 	userHandler := handlers.NewUserHandler(userService)
 	taskHandler := handlers.NewTaskHandler(taskService)
