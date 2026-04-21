@@ -181,3 +181,96 @@ func (s *Service) GetUserTasks(userID uuid.UUID) ([]*domain.Task, error) {
 
 	return tasks, nil
 }
+
+func (s *Service) AdminGetAllTasks() ([]*domain.Task, error) {
+	var tasks []*domain.Task
+	var err error
+
+	tasks, err = s.taskRepo.FindAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all tasks: %w", err)
+	}
+
+	return tasks, nil
+}
+
+func (s *Service) AdminUpdateTask(taskID uuid.UUID, req dto.AdminUpdateTaskRequest) (*domain.Task, error) {
+	task, err := s.taskRepo.FindByID(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find task by ID: %w", err)
+	}
+	if task == nil {
+		return nil, domain.ErrTaskNotFound
+	}
+
+	if req.Title != nil {
+		if len(*req.Title) > 255 {
+			return nil, errors.New("title cannot be longer than 255 characters")
+		}
+		if len(*req.Title) == 0 {
+			return nil, errors.New("title cannot be empty")
+		}
+		task.Title = *req.Title
+	}
+
+	if req.Description != nil {
+		task.Description = *req.Description
+	}
+
+	if req.DueDate != nil {
+		if !req.DueDate.IsZero() && req.DueDate.Before(time.Now()) {
+			return nil, errors.New("due date cannot be in the past")
+		}
+		task.DueDate = *req.DueDate
+	}
+
+	if req.Priority != nil {
+		validPrioity := map[string]bool{
+			domain.TaskPriorityUrgent: true,
+			domain.TaskPriorityHigh:   true,
+			domain.TaskPriorityMedium: true,
+			domain.TaskPriorityLow:    true,
+		}
+		if !validPrioity[*req.Priority] {
+			return nil, errors.New("invalid priority value")
+		}
+		task.Priority = *req.Priority
+	}
+
+	if req.Status != nil {
+		validStatus := map[string]bool{
+			domain.TaskStatusPending:    true,
+			domain.TaskStatusInProgress: true,
+			domain.TaskStatusCompleted:  true,
+			domain.TaskStatusCancelled:  true,
+		}
+		if !validStatus[*req.Status] {
+			return nil, errors.New("invalid status value")
+		}
+		task.Status = *req.Status
+	}
+
+	task.UpdatedAt = time.Now()
+
+	if err := s.taskRepo.Update(task); err != nil {
+		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	return task, nil
+}
+
+func (s *Service) AdminDeleteTask(taskID uuid.UUID) error {
+	task, err := s.taskRepo.FindByID(taskID)
+	if err != nil {
+		return fmt.Errorf("failed to find task by ID: %w", err)
+	}
+	if task == nil {
+		return domain.ErrTaskNotFound
+	}
+
+	if err := s.taskRepo.Delete(taskID); err != nil {
+		return fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	return nil
+}

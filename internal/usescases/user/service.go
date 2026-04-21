@@ -202,3 +202,49 @@ func (s *Service) DeleteUser(userID uuid.UUID) error {
 
 	return nil
 }
+
+func (s *Service) PromoteUserToAdmin(userID uuid.UUID) error {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return domain.ErrUserNotFound
+	}
+
+	if user.UserType == domain.UserTypeAdmin {
+		return errors.New("user is already an admin")
+	}
+
+	user.UserType = domain.UserTypeAdmin
+	user.UpdatedAt = time.Now()
+
+	if err := s.userRepo.Update(user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) DemoteAdminToUser(userID uuid.UUID) error {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to find user by ID: %w", err)
+	}
+	if user == nil {
+		return domain.ErrUserNotFound
+	}
+
+	if user.UserType != domain.UserTypeAdmin {
+		return errors.New("user is not an admin")
+	}
+
+	user.UserType = domain.UserTypeRegular
+	user.UpdatedAt = time.Now()
+
+	if err := s.userRepo.Update(user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
+}

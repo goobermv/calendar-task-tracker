@@ -191,3 +191,79 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
+
+func (h *TaskHandler) AdminGetAllTasks(c *gin.Context) {
+	tasks, err := h.taskService.AdminGetAllTasks()
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	responses := make([]dto.TaskResponse, len(tasks))
+	for i, task := range tasks {
+		responses[i] = dto.TaskResponse{
+			ID:          task.ID,
+			UserID:      task.UserID,
+			Title:       task.Title,
+			Description: task.Description,
+			Status:      task.Status,
+			DueDate:     task.DueDate,
+			Priority:    task.Priority,
+			CreatedAt:   task.CreatedAt,
+			UpdatedAt:   task.UpdatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tasks": responses,
+		"count": len(responses),
+	})
+}
+
+func (h *TaskHandler) AdminUpdateTask(c *gin.Context) {
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
+		return
+	}
+
+	var req dto.AdminUpdateTaskRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	task, err := h.taskService.AdminUpdateTask(taskID, req)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.TaskResponse{
+		ID:          task.ID,
+		UserID:      task.UserID,
+		Title:       task.Title,
+		Description: task.Description,
+		Status:      task.Status,
+		DueDate:     task.DueDate,
+		Priority:    task.Priority,
+		CreatedAt:   task.CreatedAt,
+		UpdatedAt:   time.Now(),
+	})
+}
+
+func (h *TaskHandler) AdminDeleteTask(c *gin.Context) {
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
+		return
+	}
+
+	err := h.taskService.AdminDeleteTask(taskID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}

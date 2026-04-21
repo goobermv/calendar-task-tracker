@@ -15,4 +15,5 @@ type TaskRepository interface {
 	FindByUserID(id uuid.UUID) ([]*domain.Task, error)
 	Update(task *domain.Task) error
 	Delete(id uuid.UUID) error
+	FindAll() ([]*domain.Task, error)
 }

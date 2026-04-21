@@ -13,6 +13,8 @@ var (
 	ErrUserNotFound          = errors.New("user not found")
 	ErrTaskNotFound          = errors.New("task not found")
 	ErrEventNotFound         = errors.New("event not found")
+	ErrCannotPromoteYourself = errors.New("cannot promote yourself")
+	ErrCannotDemoteYourself  = errors.New("cannot demote yourself")
 	ErrFailedToCreateTask    = errors.New("failed to create task")
 	ErrFailedToCreateEvent   = errors.New("failed to create event")
 	ErrFailedToGetUserTasks  = errors.New("failed to get user tasks")

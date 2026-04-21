@@ -45,6 +45,21 @@ func SetupRoutes(
 		protected.PUT("/events/:id", eventHandler.UpdateEvent)
 		protected.DELETE("/events/:id", eventHandler.DeleteEvent)
 
+		adminGroup := protected.Group("/admin")
+		adminGroup.Use(middleware.AuthMiddleware(jwtService))
+		{
+			adminGroup.POST("/users/:id/promote", userHandler.PromoteUserToAdmin)
+			adminGroup.POST("/users/:id/demote", userHandler.DemoteAdminToUser)
+
+			adminGroup.GET("/tasks", taskHandler.AdminGetAllTasks)
+			adminGroup.PUT("/tasks/:id", taskHandler.AdminUpdateTask)
+			adminGroup.DELETE("/tasks/:id", taskHandler.AdminDeleteTask)
+
+			adminGroup.GET("/events", eventHandler.AdminGetAllEvents)
+			adminGroup.PUT("/events/:id", eventHandler.AdminUpdateEvents)
+			adminGroup.DELETE("/events/:id", eventHandler.AdminDeleteEvents)
+		}
+
 		// Calendar routes (to be implemented)
 		// protected.GET("/calendar", calendarHandler.GetCalendar)
 	}

@@ -15,4 +15,5 @@ type EventRepository interface {
 	FindByUserID(id uuid.UUID) ([]*domain.Event, error)
 	Update(task *domain.Event) error
 	Delete(id uuid.UUID) error
+	FindAll() ([]*domain.Event, error)
 }

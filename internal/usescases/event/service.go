@@ -198,3 +198,106 @@ func (s *Service) GetUserEvents(userID uuid.UUID) ([]*domain.Event, error) {
 
 	return events, nil
 }
+
+func (s *Service) AdminGetAllEvents() ([]*domain.Event, error) {
+	var events []*domain.Event
+	var err error
+
+	events, err = s.eventRepo.FindAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all events: %w", err)
+	}
+
+	return events, nil
+}
+
+func (s *Service) AdminUpdateEvent(eventID uuid.UUID, req dto.AdminUpdateEventRequest) (*domain.Event, error) {
+	event, err := s.eventRepo.FindByID(eventID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find event by ID: %w", err)
+	}
+	if event == nil {
+		return nil, domain.ErrEventNotFound
+	}
+
+	if req.Title != nil {
+		if len(*req.Title) > 255 {
+			return nil, errors.New("title cannot be longer than 255 characters")
+		}
+		if len(*req.Title) == 0 {
+			return nil, errors.New("title cannot be empty")
+		}
+		event.Title = *req.Title
+	}
+
+	if req.Description != nil {
+		event.Description = *req.Description
+	}
+
+	if req.StartTime != nil {
+		if !req.StartTime.IsZero() && req.StartTime.Before(time.Now()) {
+			return nil, errors.New("start time cannot be in the past")
+		}
+		if req.EndTime != nil && !req.StartTime.IsZero() && req.StartTime.After(*req.EndTime) {
+			return nil, errors.New("start time cannot be after end time")
+		}
+		if req.EndTime == nil && !req.StartTime.IsZero() && req.StartTime.After(event.EndTime) {
+			return nil, errors.New("start time cannot be after end time")
+		}
+		event.StartTime = *req.StartTime
+	}
+
+	if req.EndTime != nil {
+		if !req.EndTime.IsZero() && req.EndTime.Before(time.Now()) {
+			return nil, errors.New("end time cannot be in the past")
+		}
+		startTime := event.StartTime
+		if req.StartTime != nil {
+			startTime = *req.StartTime
+		}
+		if !req.EndTime.IsZero() && req.EndTime.Before(startTime) {
+			return nil, errors.New("end time cannot be before start time")
+		}
+		event.EndTime = *req.EndTime
+	}
+
+	if req.EventType != nil {
+		validEventType := map[string]bool{
+			domain.EventTypeFormal:      true,
+			domain.EventTypeCelebration: true,
+			domain.EventTypeImportant:   true,
+			domain.EventTypePersonal:    true,
+			domain.EventTypeHoliday:     true,
+			domain.EventTypeCasual:      true,
+			domain.EventTypeBusiness:    true,
+		}
+		if !validEventType[*req.EventType] {
+			return nil, errors.New("invalid event type value")
+		}
+		event.EventType = *req.EventType
+	}
+
+	event.UpdatedAt = time.Now()
+
+	if err := s.eventRepo.Update(event); err != nil {
+		return nil, fmt.Errorf("failed to update event: %w", err)
+	}
+
+	return event, nil
+}
+
+func (s *Service) AdminDeleteEvent(eventID uuid.UUID) error {
+	event, err := s.eventRepo.FindByID(eventID)
+	if err != nil {
+		return fmt.Errorf("failed to find event by ID: %w", err)
+	}
+	if event == nil {
+		return domain.ErrEventNotFound
+	}
+
+	if err := s.eventRepo.Delete(eventID); err != nil {
+		return fmt.Errorf("failed to delete event: %w", err)
+	}
+
+	return nil
+}

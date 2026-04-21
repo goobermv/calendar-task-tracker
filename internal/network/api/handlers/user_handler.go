@@ -9,6 +9,7 @@ import (
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	userUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/user"
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -118,16 +119,14 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
-	response := dto.UserResponse{
+	c.JSON(http.StatusOK, dto.UserResponse{
 		ID:        user.ID,
 		Email:     user.Email,
 		Username:  user.Username,
 		UserType:  string(user.UserType),
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: time.Now(),
-	}
-
-	c.JSON(http.StatusOK, response)
+	})
 }
 
 func (h *UserHandler) UpdateUserPassword(c *gin.Context) {
@@ -165,4 +164,64 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
+	userIDStr := c.Param("id")
+	targetUserID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		HandleError(c, domain.ErrInvalidUUID)
+		return
+	}
+
+	requestingUserID, exists := middleware.GetUserID(c)
+	if exists && requestingUserID == targetUserID {
+		HandleError(c, domain.ErrCannotPromoteYourself)
+		return
+	}
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	err = h.userService.PromoteUserToAdmin(targetUserID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User promoted to admin successfully",
+		"user_id": targetUserID.String(),
+	})
+}
+
+func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
+	userIDStr := c.Param("id")
+	targetUserID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		HandleError(c, domain.ErrInvalidUUID)
+		return
+	}
+
+	requestingUserID, exists := middleware.GetUserID(c)
+	if exists && requestingUserID == targetUserID {
+		HandleError(c, domain.ErrCannotDemoteYourself)
+		return
+	}
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	err = h.userService.DemoteAdminToUser(targetUserID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Admin demoted to user successfully",
+		"user_id": targetUserID.String(),
+	})
 }

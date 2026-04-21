@@ -67,6 +67,20 @@ func HandleError(c *gin.Context, err error) {
 			Details: err.Error(),
 		})
 
+	case errors.Is(err, domain.ErrCannotPromoteYourself):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "cannot promote youself",
+			Code:    http.StatusForbidden,
+			Details: err.Error(),
+		})
+
+	case errors.Is(err, domain.ErrCannotDemoteYourself):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "cannot demote youself",
+			Code:    http.StatusForbidden,
+			Details: err.Error(),
+		})
+
 	case errors.Is(err, domain.ErrFailedToCreateTask):
 		statusCode := http.StatusBadRequest
 		if errors.Is(err, domain.ErrUserNotFound) {

@@ -22,6 +22,15 @@ type UpdateTaskRequest struct {
 	DueDate     *time.Time `json:"due_date"`
 }
 
+type AdminUpdateTaskRequest struct {
+	UserID      *uuid.UUID `json:"user_id"`
+	Title       *string    `json:"title" binding:"omitempty,min=1,max=255"`
+	Description *string    `json:"description"`
+	Status      *string    `json:"status" binding:"omitempty,oneof=pending in_progress completed cancelled"`
+	Priority    *string    `json:"priority" binding:"omitempty,oneof=low medium high urgent"`
+	DueDate     *time.Time `json:"due_date"`
+}
+
 type TaskResponse struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`

@@ -189,3 +189,79 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
+
+func (h *EventHandler) AdminGetAllEvents(c *gin.Context) {
+	events, err := h.eventService.AdminGetAllEvents()
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	responses := make([]dto.EventResponse, len(events))
+	for i, event := range events {
+		responses[i] = dto.EventResponse{
+			ID:          event.ID,
+			UserID:      event.ID,
+			Title:       event.Title,
+			Description: event.Description,
+			StartTime:   event.StartTime,
+			EndTime:     event.EndTime,
+			EventType:   event.EventType,
+			CreatedAt:   event.CreatedAt,
+			UpdatedAt:   event.UpdatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"events": responses,
+		"count":  len(responses),
+	})
+}
+
+func (h *EventHandler) AdminUpdateEvents(c *gin.Context) {
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
+		return
+	}
+
+	var req dto.AdminUpdateEventRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	event, err := h.eventService.AdminUpdateEvent(eventID, req)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.EventResponse{
+		ID:          event.ID,
+		UserID:      event.UserID,
+		Title:       event.Title,
+		Description: event.Description,
+		StartTime:   event.StartTime,
+		EndTime:     event.EndTime,
+		EventType:   event.EventType,
+		CreatedAt:   event.CreatedAt,
+		UpdatedAt:   event.UpdatedAt,
+	})
+}
+
+func (h *EventHandler) AdminDeleteEvents(c *gin.Context) {
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
+		return
+	}
+
+	err := h.eventService.AdminDeleteEvent(eventID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}

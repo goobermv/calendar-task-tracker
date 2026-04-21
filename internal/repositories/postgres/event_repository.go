@@ -201,3 +201,36 @@ func (r *EventRepository) Delete(id uuid.UUID) error {
 	}
 	return nil
 }
+
+func (r *EventRepository) FindAll() ([]*domain.Event, error) {
+	events := []*domain.Event{}
+
+	query := `SELECT id, user_id, title, description, start_time, end_time, event_type, created_at, updated_at
+			  FROM events
+			  ORDER BY start_time DESC`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send query to database: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		event := &domain.Event{}
+
+		err = rows.Scan(
+			&event.ID, &event.UserID, &event.Title, &event.Description, &event.StartTime, &event.EndTime, &event.EventType, &event.CreatedAt, &event.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error while scanning rows: %w", err)
+		}
+
+		events = append(events, event)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error after iterating rows: %w", err)
+	}
+
+	return events, nil
+}
