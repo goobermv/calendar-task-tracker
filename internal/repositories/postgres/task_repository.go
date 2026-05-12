@@ -121,7 +121,7 @@ func (r *TaskRepository) FindByDate(date time.Time) ([]*domain.Task, error) {
 	return tasks, nil
 }
 
-func (r *TaskRepository) FindByUserID(id uuid.UUID) ([]*domain.Task, error) {
+func (r *TaskRepository) FindByUserID(id uuid.UUID, limit, offset int) ([]*domain.Task, int, error) {
 	tasks := []*domain.Task{}
 
 	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
@@ -137,7 +137,7 @@ func (r *TaskRepository) FindByUserID(id uuid.UUID) ([]*domain.Task, error) {
 
 	rows, err := r.db.Query(query, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send query to database: %w", err)
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
 	}
 	defer rows.Close()
 
@@ -148,17 +148,17 @@ func (r *TaskRepository) FindByUserID(id uuid.UUID) ([]*domain.Task, error) {
 			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.CreatedAt, &task.UpdatedAt, &task.DueDate,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error while scanning rows: %w", err)
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
 		}
 
 		tasks = append(tasks, task)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error after iterating rows: %w", err)
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
 	}
 
-	return tasks, nil
+	return tasks, 0, nil
 }
 
 func (r *TaskRepository) Update(task *domain.Task) error {
@@ -203,7 +203,7 @@ func (r *TaskRepository) Delete(id uuid.UUID) error {
 	return nil
 }
 
-func (r *TaskRepository) FindAll() ([]*domain.Task, error) {
+func (r *TaskRepository) FindAll(limit, offset int) ([]*domain.Task, int, error) {
 	tasks := []*domain.Task{}
 
 	query := `SELECT id, user_id, title, description, status, priority, due_date, created_at, updated_at
@@ -212,7 +212,7 @@ func (r *TaskRepository) FindAll() ([]*domain.Task, error) {
 
 	rows, err := r.db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send query to database: %w", err)
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
 	}
 	defer rows.Close()
 
@@ -221,10 +221,10 @@ func (r *TaskRepository) FindAll() ([]*domain.Task, error) {
 		var dueDate sql.NullTime
 
 		err = rows.Scan(
-			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.CreatedAt, &task.UpdatedAt, &task.DueDate,
+			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.DueDate, &task.CreatedAt, &task.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error while scanning rows: %w", err)
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
 		}
 
 		if dueDate.Valid {
@@ -235,8 +235,8 @@ func (r *TaskRepository) FindAll() ([]*domain.Task, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error after iterating rows: %w", err)
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
 	}
 
-	return tasks, nil
+	return tasks, 0, nil
 }

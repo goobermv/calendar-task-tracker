@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
@@ -46,19 +47,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	response := dto.EventResponse{
-		ID:          event.ID,
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, event)
 }
 
 func (h *EventHandler) GetEvent(c *gin.Context) {
@@ -80,19 +69,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		return
 	}
 
-	response := dto.EventResponse{
-		ID:          event.ID,
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, event)
 }
 
 func (h *EventHandler) GetUserEvents(c *gin.Context) {
@@ -102,29 +79,18 @@ func (h *EventHandler) GetUserEvents(c *gin.Context) {
 		return
 	}
 
-	events, err := h.eventService.GetUserEvents(userID)
+	page, limit := getPaginationParams(c)
+
+	events, totalCount, err := h.eventService.GetUserEvents(userID, page, limit)
 	if err != nil {
 		HandleError(c, domain.ErrFailedToGetUserEvents)
 	}
 
-	responses := make([]dto.EventResponse, len(events))
-	for i, event := range events {
-		responses[i] = dto.EventResponse{
-			ID:          event.ID,
-			UserID:      event.UserID,
-			Title:       event.Title,
-			Description: event.Description,
-			StartTime:   event.StartTime,
-			EndTime:     event.EndTime,
-			EventType:   event.EventType,
-			CreatedAt:   event.CreatedAt,
-			UpdatedAt:   event.UpdatedAt,
-		}
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"events": responses,
-		"count":  len(responses),
+		"events":      events,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
 	})
 }
 
@@ -153,19 +119,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	response := dto.EventResponse{
-		ID:          event.ID,
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, event)
 }
 
 func (h *EventHandler) DeleteEvent(c *gin.Context) {
@@ -191,30 +145,30 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 }
 
 func (h *EventHandler) AdminGetAllEvents(c *gin.Context) {
-	events, err := h.eventService.AdminGetAllEvents()
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	events, totalCount, err := h.eventService.AdminGetAllEvents(page, limit)
 	if err != nil {
 		HandleError(c, err)
 		return
 	}
 
-	responses := make([]dto.EventResponse, len(events))
-	for i, event := range events {
-		responses[i] = dto.EventResponse{
-			ID:          event.ID,
-			UserID:      event.ID,
-			Title:       event.Title,
-			Description: event.Description,
-			StartTime:   event.StartTime,
-			EndTime:     event.EndTime,
-			EventType:   event.EventType,
-			CreatedAt:   event.CreatedAt,
-			UpdatedAt:   event.UpdatedAt,
-		}
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"events": responses,
-		"count":  len(responses),
+		"events":      events,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
 	})
 }
 
@@ -237,17 +191,7 @@ func (h *EventHandler) AdminUpdateEvents(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.EventResponse{
-		ID:          event.ID,
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	})
+	c.JSON(http.StatusOK, event)
 }
 
 func (h *EventHandler) AdminDeleteEvents(c *gin.Context) {

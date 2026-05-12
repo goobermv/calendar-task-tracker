@@ -121,7 +121,7 @@ func (r *EventRepository) FindByDate(start, end time.Time) ([]*domain.Event, err
 	return events, nil
 }
 
-func (r *EventRepository) FindByUserID(id uuid.UUID) ([]*domain.Event, error) {
+func (r *EventRepository) FindByUserID(id uuid.UUID, limit, offset int) ([]*domain.Event, int, error) {
 	events := []*domain.Event{}
 
 	query := `SELECT id, user_id, title, description, start_time, end_time, event_type, created_at, updated_at
@@ -137,7 +137,7 @@ func (r *EventRepository) FindByUserID(id uuid.UUID) ([]*domain.Event, error) {
 
 	rows, err := r.db.Query(query, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send query to database: %w", err)
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
 	}
 	defer rows.Close()
 
@@ -148,17 +148,17 @@ func (r *EventRepository) FindByUserID(id uuid.UUID) ([]*domain.Event, error) {
 			&event.ID, &event.UserID, &event.Title, &event.Description, &event.StartTime, &event.EndTime, &event.EventType, &event.CreatedAt, &event.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error while scanning rows: %w", err)
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
 		}
 
 		events = append(events, event)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error after iterating rows: %w", err)
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
 	}
 
-	return events, nil
+	return events, 0, nil
 }
 
 func (r *EventRepository) Update(event *domain.Event) error {
@@ -202,7 +202,7 @@ func (r *EventRepository) Delete(id uuid.UUID) error {
 	return nil
 }
 
-func (r *EventRepository) FindAll() ([]*domain.Event, error) {
+func (r *EventRepository) FindAll(limit, offset int) ([]*domain.Event, int, error) {
 	events := []*domain.Event{}
 
 	query := `SELECT id, user_id, title, description, start_time, end_time, event_type, created_at, updated_at
@@ -211,7 +211,7 @@ func (r *EventRepository) FindAll() ([]*domain.Event, error) {
 
 	rows, err := r.db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send query to database: %w", err)
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
 	}
 	defer rows.Close()
 
@@ -222,15 +222,15 @@ func (r *EventRepository) FindAll() ([]*domain.Event, error) {
 			&event.ID, &event.UserID, &event.Title, &event.Description, &event.StartTime, &event.EndTime, &event.EventType, &event.CreatedAt, &event.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error while scanning rows: %w", err)
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
 		}
 
 		events = append(events, event)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error after iterating rows: %w", err)
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
 	}
 
-	return events, nil
+	return events, 0, nil
 }

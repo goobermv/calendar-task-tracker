@@ -30,23 +30,23 @@ func SetupRoutes(
 	{
 		protected.GET("/users/me", userHandler.GetProfile)
 		protected.PATCH("/users/:id", userHandler.UpdateUserInfo)
-		protected.PATCH("/users/:id", userHandler.UpdateUserPassword)
+		protected.PATCH("/users/:id/password", userHandler.UpdateUserPassword)
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
 
-		protected.GET("/tasks", taskHandler.GetTask)
 		protected.GET("/tasks", taskHandler.GetUserTasks)
+		protected.GET("/tasks/:id", taskHandler.GetTask)
 		protected.POST("/tasks", taskHandler.CreateTask)
 		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
 		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
 
-		protected.GET("/events", eventHandler.GetEvent)
 		protected.GET("/events", eventHandler.GetUserEvents)
+		protected.GET("/events/:id", eventHandler.GetEvent)
 		protected.POST("/events", eventHandler.CreateEvent)
 		protected.PUT("/events/:id", eventHandler.UpdateEvent)
 		protected.DELETE("/events/:id", eventHandler.DeleteEvent)
 
 		adminGroup := protected.Group("/admin")
-		adminGroup.Use(middleware.AuthMiddleware(jwtService))
+		adminGroup.Use(middleware.AdminOnly())
 		{
 			adminGroup.POST("/users/:id/promote", userHandler.PromoteUserToAdmin)
 			adminGroup.POST("/users/:id/demote", userHandler.DemoteAdminToUser)

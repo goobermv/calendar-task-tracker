@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -33,13 +34,5 @@ type AdminUpdateEventRequest struct {
 }
 
 type EventResponse struct {
-	ID          uuid.UUID `json:"id"`
-	UserID      uuid.UUID `json:"user_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	EventType   string    `json:"event_type"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	domain.Event
 }

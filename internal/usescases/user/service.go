@@ -67,7 +67,7 @@ func (s *Service) Register(req dto.RegisterRequest) (*dto.RegisterResponse, erro
 		return nil, err
 	}
 
-	token, err := s.jwtService.GenerateToken(user.ID, user.Email)
+	token, err := s.jwtService.GenerateToken(user.ID, user.Email, user.UserType)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to generate token for user: %s", user.ID)
 		return nil, errors.New("failed to generate token")
@@ -103,7 +103,7 @@ func (s *Service) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	token, err := s.jwtService.GenerateToken(user.ID, user.Email)
+	token, err := s.jwtService.GenerateToken(user.ID, user.Email, user.UserType)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to generate token for user: %s", user.ID)
 		return nil, errors.New("failed to generate token")

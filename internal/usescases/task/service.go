@@ -206,40 +206,43 @@ func (s *Service) GetTaskByID(taskID, userID uuid.UUID) (*domain.Task, error) {
 	return task, nil
 }
 
-func (s *Service) GetUserTasks(userID uuid.UUID) ([]*domain.Task, error) {
-	s.logger.Debugf("Fetching all tasks for user: %s", userID)
+func (s *Service) GetUserTasks(userID uuid.UUID, page, limit int) ([]*domain.Task, int, error) {
+	s.logger.Debugf("Fetching all tasks for user: %s (page: %d, limit: %d)", userID, page, limit)
 
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to verify user: %s", userID)
-		return nil, domain.ErrValidation
+		return nil, 0, domain.ErrValidation
 	}
 	if user == nil {
 		s.logger.Warnf("User not found for task retrieval: %s", userID)
-		return nil, domain.ErrUserNotFound
+		return nil, 0, domain.ErrUserNotFound
 	}
 
-	tasks, err := s.taskRepo.FindByUserID(userID)
+	offset := (page - 1) * limit
+
+	tasks, totalCount, err := s.taskRepo.FindByUserID(userID, limit, offset)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to get tasks for user: %s", userID)
-		return nil, fmt.Errorf("failed to get user tasks: %w", err)
+		return nil, 0, fmt.Errorf("failed to get user tasks: %w", err)
 	}
 
-	s.logger.Debugf("Retrieved %d tasks for user: %s", len(tasks), userID)
-	return tasks, nil
+	return tasks, totalCount, nil
 }
 
-func (s *Service) AdminGetAllTasks() ([]*domain.Task, error) {
-	s.logger.Infof("Admin: Fetching all tasks from all users")
+func (s *Service) AdminGetAllTasks(page, limit int) ([]*domain.Task, int, error) {
+	s.logger.Infof("Admin: Fetching tasks with pagination (page: %d, limit: %d)", page, limit)
 
-	tasks, err := s.taskRepo.FindAll()
+	offset := (page - 1) * limit
+
+	tasks, totalCount, err := s.taskRepo.FindAll(limit, offset)
 	if err != nil {
 		s.logger.Errorf(err, "Admin: Failed to get all tasks")
-		return nil, fmt.Errorf("failed to get all tasks: %w", err)
+		return nil, 0, fmt.Errorf("failed to get all tasks: %w", err)
 	}
 
-	s.logger.Infof("Admin: Retrieved %d total tasks", len(tasks))
-	return tasks, nil
+	s.logger.Infof("Admin: Retrieved %d tasks out of %d total", len(tasks), totalCount)
+	return tasks, totalCount, nil
 }
 
 func (s *Service) AdminUpdateTask(taskID uuid.UUID, req dto.AdminUpdateTaskRequest) (*domain.Task, error) {

@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"time"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
@@ -48,19 +48,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	response := dto.TaskResponse{
-		ID:          task.ID,
-		UserID:      task.UserID,
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   time.Now(),
-	}
-
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, task)
 }
 
 func (h *TaskHandler) GetTask(c *gin.Context) {
@@ -82,19 +70,24 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 		return
 	}
 
-	response := dto.TaskResponse{
-		ID:          task.ID,
-		UserID:      task.UserID,
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   time.Now(),
+	c.JSON(http.StatusOK, task)
+}
+
+func getPaginationParams(c *gin.Context) (int, int) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
 	}
 
-	c.JSON(http.StatusOK, response)
+	return page, limit
 }
 
 func (h *TaskHandler) GetUserTasks(c *gin.Context) {
@@ -104,29 +97,18 @@ func (h *TaskHandler) GetUserTasks(c *gin.Context) {
 		return
 	}
 
-	tasks, err := h.taskService.GetUserTasks(userID)
+	page, limit := getPaginationParams(c)
+
+	tasks, totalCount, err := h.taskService.GetUserTasks(userID, page, limit)
 	if err != nil {
 		HandleError(c, domain.ErrFailedToGetUserTasks)
 	}
 
-	responses := make([]dto.TaskResponse, len(tasks))
-	for i, task := range tasks {
-		responses[i] = dto.TaskResponse{
-			ID:          task.ID,
-			UserID:      task.UserID,
-			Title:       task.Title,
-			Description: task.Description,
-			Status:      task.Status,
-			DueDate:     task.DueDate,
-			Priority:    task.Priority,
-			CreatedAt:   task.CreatedAt,
-			UpdatedAt:   task.UpdatedAt,
-		}
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"tasks": responses,
-		"count": len(responses),
+		"tasks":       tasks,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
 	})
 }
 
@@ -155,19 +137,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	resonse := dto.TaskResponse{
-		ID:          task.ID,
-		UserID:      task.UserID,
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   time.Now(),
-	}
-
-	c.JSON(http.StatusOK, resonse)
+	c.JSON(http.StatusOK, task)
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
@@ -193,30 +163,30 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 }
 
 func (h *TaskHandler) AdminGetAllTasks(c *gin.Context) {
-	tasks, err := h.taskService.AdminGetAllTasks()
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	tasks, totalCount, err := h.taskService.AdminGetAllTasks(page, limit)
 	if err != nil {
 		HandleError(c, err)
 		return
 	}
 
-	responses := make([]dto.TaskResponse, len(tasks))
-	for i, task := range tasks {
-		responses[i] = dto.TaskResponse{
-			ID:          task.ID,
-			UserID:      task.UserID,
-			Title:       task.Title,
-			Description: task.Description,
-			Status:      task.Status,
-			DueDate:     task.DueDate,
-			Priority:    task.Priority,
-			CreatedAt:   task.CreatedAt,
-			UpdatedAt:   task.UpdatedAt,
-		}
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"tasks": responses,
-		"count": len(responses),
+		"tasks":       tasks,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
 	})
 }
 
@@ -239,17 +209,7 @@ func (h *TaskHandler) AdminUpdateTask(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.TaskResponse{
-		ID:          task.ID,
-		UserID:      task.UserID,
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   time.Now(),
-	})
+	c.JSON(http.StatusOK, task)
 }
 
 func (h *TaskHandler) AdminDeleteTask(c *gin.Context) {

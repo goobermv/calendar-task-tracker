@@ -229,40 +229,44 @@ func (s *Service) GetEventByID(eventID, userID uuid.UUID) (*domain.Event, error)
 	return event, nil
 }
 
-func (s *Service) GetUserEvents(userID uuid.UUID) ([]*domain.Event, error) {
-	s.logger.Debugf("Fetching all events for user: %s", userID)
+func (s *Service) GetUserEvents(userID uuid.UUID, page, limit int) ([]*domain.Event, int, error) {
+	s.logger.Debugf("Fetching all tasks for user: %s (page: %d, limit: %d)", userID, page, limit)
 
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to verify user: %s", userID)
-		return nil, domain.ErrValidation
+		return nil, 0, domain.ErrValidation
 	}
 	if user == nil {
 		s.logger.Warnf("User not found for event retrieval: %s", userID)
-		return nil, domain.ErrUserNotFound
+		return nil, 0, domain.ErrUserNotFound
 	}
 
-	events, err := s.eventRepo.FindByUserID(userID)
+	offset := (page - 1) * limit
+
+	events, totalCount, err := s.eventRepo.FindByUserID(userID, limit, offset)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to get events for user: %s", userID)
-		return nil, fmt.Errorf("failed to get user tasks: %w", err)
+		return nil, 0, fmt.Errorf("failed to get user tasks: %w", err)
 	}
 
 	s.logger.Debugf("Retrieved %d events for user: %s", len(events), userID)
-	return events, nil
+	return events, totalCount, nil
 }
 
-func (s *Service) AdminGetAllEvents() ([]*domain.Event, error) {
-	s.logger.Infof("Admin: Fetching all events from all users")
+func (s *Service) AdminGetAllEvents(page, limit int) ([]*domain.Event, int, error) {
+	s.logger.Infof("Admin: Fetching events with pagination (page: %d, limit: %d)", page, limit)
 
-	events, err := s.eventRepo.FindAll()
+	offset := (page - 1) * limit
+
+	events, totalCount, err := s.eventRepo.FindAll(limit, offset)
 	if err != nil {
 		s.logger.Errorf(err, "Admin: Failed to get all events")
-		return nil, fmt.Errorf("failed to get all events: %w", err)
+		return nil, 0, fmt.Errorf("failed to get all events: %w", err)
 	}
 
-	s.logger.Infof("Admin: Retrieved %d total events", len(events))
-	return events, nil
+	s.logger.Infof("Admin: Retrieved %d events out of %d tatal", len(events), totalCount)
+	return events, totalCount, nil
 }
 
 func (s *Service) AdminUpdateEvent(eventID uuid.UUID, req dto.AdminUpdateEventRequest) (*domain.Event, error) {

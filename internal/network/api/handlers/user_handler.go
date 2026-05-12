@@ -9,7 +9,6 @@ import (
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	userUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/user"
-	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -167,15 +166,8 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
-	userIDStr := c.Param("id")
-	targetUserID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		HandleError(c, domain.ErrInvalidUUID)
-		return
-	}
-
 	requestingUserID, exists := middleware.GetUserID(c)
-	if exists && requestingUserID == targetUserID {
+	if exists {
 		HandleError(c, domain.ErrCannotPromoteYourself)
 		return
 	}
@@ -184,7 +176,7 @@ func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
 		return
 	}
 
-	err = h.userService.PromoteUserToAdmin(targetUserID)
+	err := h.userService.PromoteUserToAdmin(requestingUserID)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -192,20 +184,13 @@ func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User promoted to admin successfully",
-		"user_id": targetUserID.String(),
+		"user_id": requestingUserID.String(),
 	})
 }
 
 func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
-	userIDStr := c.Param("id")
-	targetUserID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		HandleError(c, domain.ErrInvalidUUID)
-		return
-	}
-
 	requestingUserID, exists := middleware.GetUserID(c)
-	if exists && requestingUserID == targetUserID {
+	if exists {
 		HandleError(c, domain.ErrCannotDemoteYourself)
 		return
 	}
@@ -214,7 +199,7 @@ func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
 		return
 	}
 
-	err = h.userService.DemoteAdminToUser(targetUserID)
+	err := h.userService.DemoteAdminToUser(requestingUserID)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -222,6 +207,6 @@ func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Admin demoted to user successfully",
-		"user_id": targetUserID.String(),
+		"user_id": requestingUserID.String(),
 	})
 }
