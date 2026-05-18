@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	eventUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/event"
-	"github.com/google/uuid"
 )
 
 type EventHandler struct {
@@ -47,19 +47,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	response := dto.EventResponse{
-		ID:          event.ID.String(),
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, event)
 }
 
 func (h *EventHandler) GetEvent(c *gin.Context) {
@@ -69,10 +57,9 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		return
 	}
 
-	eventIDstr := c.Param("id")
-	eventID, err := uuid.Parse(eventIDstr)
-	if err != nil {
-
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
 		return
 	}
 
@@ -82,22 +69,30 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		return
 	}
 
-	response := dto.EventResponse{
-		ID:          event.ID.String(),
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, event)
 }
 
-// implement GetUserEvents handler
+func (h *EventHandler) GetUserEvents(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	page, limit := getPaginationParams(c)
+
+	events, totalCount, err := h.eventService.GetUserEvents(userID, page, limit)
+	if err != nil {
+		HandleError(c, domain.ErrFailedToGetUserEvents)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"events":      events,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
+	})
+}
 
 func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	userID, exists := middleware.GetUserID(c)
@@ -106,10 +101,9 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	eventIDstr := c.Param("id")
-	eventID, err := uuid.Parse(eventIDstr)
-	if err != nil {
-		HandleError(c, err)
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
 		return
 	}
 
@@ -125,19 +119,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	response := dto.EventResponse{
-		ID:          event.ID.String(),
-		UserID:      event.UserID,
-		Title:       event.Title,
-		Description: event.Description,
-		StartTime:   event.StartTime,
-		EndTime:     event.EndTime,
-		EventType:   event.EventType,
-		CreatedAt:   event.CreatedAt,
-		UpdatedAt:   event.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, event)
 }
 
 func (h *EventHandler) DeleteEvent(c *gin.Context) {
@@ -147,20 +129,83 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 		return
 	}
 
-	eventIDStr := c.Param("id")
-	eventID, err := uuid.Parse(eventIDStr)
-	if err != nil {
-		HandleError(c, err)
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
 		return
 	}
 
-	err = h.eventService.DeleteEvent(eventID, userID)
+	err := h.eventService.DeleteEvent(eventID, userID)
 	if err != nil {
-
+		HandleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusNoContent, nil)
 }
 
-// implement other handlers for functions
+func (h *EventHandler) AdminGetAllEvents(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	events, totalCount, err := h.eventService.AdminGetAllEvents(page, limit)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"events":      events,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
+	})
+}
+
+func (h *EventHandler) AdminUpdateEvents(c *gin.Context) {
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
+		return
+	}
+
+	var req dto.AdminUpdateEventRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	event, err := h.eventService.AdminUpdateEvent(eventID, req)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, event)
+}
+
+func (h *EventHandler) AdminDeleteEvents(c *gin.Context) {
+	eventID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrEventNotFound)
+		return
+	}
+
+	err := h.eventService.AdminDeleteEvent(eventID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}

@@ -67,6 +67,20 @@ func HandleError(c *gin.Context, err error) {
 			Details: err.Error(),
 		})
 
+	case errors.Is(err, domain.ErrCannotPromoteYourself):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "cannot promote youself",
+			Code:    http.StatusForbidden,
+			Details: err.Error(),
+		})
+
+	case errors.Is(err, domain.ErrCannotDemoteYourself):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "cannot demote youself",
+			Code:    http.StatusForbidden,
+			Details: err.Error(),
+		})
+
 	case errors.Is(err, domain.ErrFailedToCreateTask):
 		statusCode := http.StatusBadRequest
 		if errors.Is(err, domain.ErrUserNotFound) {
@@ -75,6 +89,13 @@ func HandleError(c *gin.Context, err error) {
 		c.JSON(statusCode, dto.ErrorResponse{
 			Error:   "Failed to create task",
 			Code:    statusCode,
+			Details: err.Error(),
+		})
+
+	case errors.Is(err, domain.ErrFailedToGetUserTasks):
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   "Failed to get user tasks",
+			Code:    http.StatusNotFound,
 			Details: err.Error(),
 		})
 
@@ -107,6 +128,13 @@ func HandleError(c *gin.Context, err error) {
 		c.JSON(statusCode, dto.ErrorResponse{
 			Error:   "Failed to create event",
 			Code:    statusCode,
+			Details: err.Error(),
+		})
+
+	case errors.Is(err, domain.ErrFailedToGetUserEvents):
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   "Failed to get user events",
+			Code:    http.StatusNotFound,
 			Details: err.Error(),
 		})
 

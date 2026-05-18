@@ -121,6 +121,46 @@ func (r *TaskRepository) FindByDate(date time.Time) ([]*domain.Task, error) {
 	return tasks, nil
 }
 
+func (r *TaskRepository) FindByUserID(id uuid.UUID, limit, offset int) ([]*domain.Task, int, error) {
+	tasks := []*domain.Task{}
+
+	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
+			  FROM tasks
+			  WHERE user_id = $1
+			  ORDER BY 
+              	CASE 
+                	WHEN due_date IS NULL THEN 1 
+                	ELSE 0
+            	END,
+            	due_date ASC
+			  `
+
+	rows, err := r.db.Query(query, id)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		task := &domain.Task{}
+
+		err = rows.Scan(
+			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.CreatedAt, &task.UpdatedAt, &task.DueDate,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
+	}
+
+	return tasks, 0, nil
+}
+
 func (r *TaskRepository) Update(task *domain.Task) error {
 	task.UpdatedAt = time.Now()
 
@@ -141,7 +181,7 @@ func (r *TaskRepository) Update(task *domain.Task) error {
 		return fmt.Errorf("task with id %s not found", task.ID)
 	}
 	return nil
-} // and whether other users have access to updated others' tasks + how to update each field individually
+}
 
 func (r *TaskRepository) Delete(id uuid.UUID) error {
 	query := `DELETE FROM tasks 
@@ -161,4 +201,42 @@ func (r *TaskRepository) Delete(id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (r *TaskRepository) FindAll(limit, offset int) ([]*domain.Task, int, error) {
+	tasks := []*domain.Task{}
+
+	query := `SELECT id, user_id, title, description, status, priority, due_date, created_at, updated_at
+        	  FROM tasks
+        	  ORDER BY due_date DESC`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		task := &domain.Task{}
+		var dueDate sql.NullTime
+
+		err = rows.Scan(
+			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.DueDate, &task.CreatedAt, &task.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
+		}
+
+		if dueDate.Valid {
+			task.DueDate = dueDate.Time
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
+	}
+
+	return tasks, 0, nil
 }

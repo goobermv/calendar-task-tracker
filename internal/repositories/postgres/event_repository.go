@@ -17,7 +17,7 @@ func NewEventRepository(db *sql.DB) *EventRepository {
 	return &EventRepository{db: db}
 }
 
-func (r *EventRepository) Create(event *domain.Event) error { // think about users "having" access all event
+func (r *EventRepository) Create(event *domain.Event) error {
 	now := time.Now()
 	event.CreatedAt = now
 	event.UpdatedAt = now
@@ -85,7 +85,7 @@ func (r *EventRepository) FindByTitle(title string) ([]*domain.Event, error) {
 	return events, nil
 }
 
-func (r *EventRepository) FindByDate(start, end time.Time) ([]*domain.Event, error) { // add check that start is before end
+func (r *EventRepository) FindByDate(start, end time.Time) ([]*domain.Event, error) {
 	events := []*domain.Event{}
 
 	startOfRange := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
@@ -121,7 +121,47 @@ func (r *EventRepository) FindByDate(start, end time.Time) ([]*domain.Event, err
 	return events, nil
 }
 
-func (r *EventRepository) Update(event *domain.Event) error { // think about how to update each field individually
+func (r *EventRepository) FindByUserID(id uuid.UUID, limit, offset int) ([]*domain.Event, int, error) {
+	events := []*domain.Event{}
+
+	query := `SELECT id, user_id, title, description, start_time, end_time, event_type, created_at, updated_at
+			  FROM events
+			  WHERE user_id = $1
+			  ORDER BY 
+              	CASE 
+                	WHEN start_time IS NULL THEN 1 
+                	ELSE 0
+            	END,
+            	start_time ASC
+			  `
+
+	rows, err := r.db.Query(query, id)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		event := &domain.Event{}
+
+		err = rows.Scan(
+			&event.ID, &event.UserID, &event.Title, &event.Description, &event.StartTime, &event.EndTime, &event.EventType, &event.CreatedAt, &event.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
+		}
+
+		events = append(events, event)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
+	}
+
+	return events, 0, nil
+}
+
+func (r *EventRepository) Update(event *domain.Event) error {
 	event.UpdatedAt = time.Now()
 
 	query := `UPDATE events
@@ -160,4 +200,37 @@ func (r *EventRepository) Delete(id uuid.UUID) error {
 		return fmt.Errorf("event with id %s not found", id)
 	}
 	return nil
+}
+
+func (r *EventRepository) FindAll(limit, offset int) ([]*domain.Event, int, error) {
+	events := []*domain.Event{}
+
+	query := `SELECT id, user_id, title, description, start_time, end_time, event_type, created_at, updated_at
+			  FROM events
+			  ORDER BY start_time DESC`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to send query to database: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		event := &domain.Event{}
+
+		err = rows.Scan(
+			&event.ID, &event.UserID, &event.Title, &event.Description, &event.StartTime, &event.EndTime, &event.EventType, &event.CreatedAt, &event.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error while scanning rows: %w", err)
+		}
+
+		events = append(events, event)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error after iterating rows: %w", err)
+	}
+
+	return events, 0, nil
 }

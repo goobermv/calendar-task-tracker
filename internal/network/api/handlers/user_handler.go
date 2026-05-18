@@ -90,7 +90,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.UserResponse{
-		ID:        user.ID.String(),
+		ID:        user.ID,
 		Email:     user.Email,
 		Username:  user.Username,
 		UserType:  string(user.UserType),
@@ -118,16 +118,14 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
-	response := dto.UserResponse{
-		ID:        user.ID.String(),
+	c.JSON(http.StatusOK, dto.UserResponse{
+		ID:        user.ID,
 		Email:     user.Email,
 		Username:  user.Username,
 		UserType:  string(user.UserType),
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: time.Now(),
-	}
-
-	c.JSON(http.StatusOK, response)
+	})
 }
 
 func (h *UserHandler) UpdateUserPassword(c *gin.Context) {
@@ -165,4 +163,50 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
+	requestingUserID, exists := middleware.GetUserID(c)
+	if exists {
+		HandleError(c, domain.ErrCannotPromoteYourself)
+		return
+	}
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	err := h.userService.PromoteUserToAdmin(requestingUserID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User promoted to admin successfully",
+		"user_id": requestingUserID.String(),
+	})
+}
+
+func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
+	requestingUserID, exists := middleware.GetUserID(c)
+	if exists {
+		HandleError(c, domain.ErrCannotDemoteYourself)
+		return
+	}
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	err := h.userService.DemoteAdminToUser(requestingUserID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Admin demoted to user successfully",
+		"user_id": requestingUserID.String(),
+	})
 }

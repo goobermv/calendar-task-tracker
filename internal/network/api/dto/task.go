@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -22,14 +23,15 @@ type UpdateTaskRequest struct {
 	DueDate     *time.Time `json:"due_date"`
 }
 
+type AdminUpdateTaskRequest struct {
+	UserID      *uuid.UUID `json:"user_id"`
+	Title       *string    `json:"title" binding:"omitempty,min=1,max=255"`
+	Description *string    `json:"description"`
+	Status      *string    `json:"status" binding:"omitempty,oneof=pending in_progress completed cancelled"`
+	Priority    *string    `json:"priority" binding:"omitempty,oneof=low medium high urgent"`
+	DueDate     *time.Time `json:"due_date"`
+}
+
 type TaskResponse struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Status      string    `json:"status"`
-	Priority    string    `json:"priority"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	DueDate     time.Time `json:"due_datedom"`
+	domain.Task
 }
