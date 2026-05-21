@@ -65,20 +65,21 @@ func AdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userType, exists := c.Get("user_type")
 
+		if !exists {
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+				Error:   "Unauthorized",
+				Code:    http.StatusUnauthorized,
+				Details: "User session information not found",
+			})
+			c.Abort()
+			return
+		}
+
 		if userType != domain.UserTypeAdmin {
 			c.JSON(http.StatusForbidden, dto.ErrorResponse{
 				Error:   "Access denied",
 				Code:    http.StatusForbidden,
 				Details: "Admin privileges required",
-			})
-			c.Abort()
-			return
-		}
-		if !exists {
-			c.JSON(http.StatusNotFound, dto.ErrorResponse{
-				Error:   "User type not found",
-				Code:    http.StatusNotFound,
-				Details: "User type not found",
 			})
 			c.Abort()
 			return
@@ -94,16 +95,41 @@ func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.UUID{}, false
 	}
 
-	userUUID, ok := userID.(uuid.UUID)
-	return userUUID, ok
+	if userUUID, ok := userID.(uuid.UUID); ok {
+		return userUUID, true
+	}
+
+	if userStr, ok := userID.(string); ok {
+		parsedUUID, err := uuid.Parse(userStr)
+		if err == nil {
+			return parsedUUID, true
+		}
+	}
+
+	return uuid.UUID{}, false
 }
 
 func GetID(c *gin.Context) (uuid.UUID, bool) {
 	ID, exists := c.Get("id")
 	if !exists {
+		idParam := c.Param("id")
+		if idParam != "" {
+			parsed, err := uuid.Parse(idParam)
+			return parsed, err == nil
+		}
 		return uuid.UUID{}, false
 	}
 
-	UUID, ok := ID.(uuid.UUID)
-	return UUID, ok
+	if UUID, ok := ID.(uuid.UUID); ok {
+		return UUID, true
+	}
+
+	if idStr, ok := ID.(string); ok {
+		parsedUUID, err := uuid.Parse(idStr)
+		if err == nil {
+			return parsedUUID, true
+		}
+	}
+
+	return uuid.UUID{}, false
 }

@@ -39,6 +39,11 @@ func (s *Service) CreateTask(req dto.CreateTaskRequest) (*domain.Task, error) {
 		return nil, errors.New("title must be less than 255 characters")
 	}
 
+	if !req.DueDate.IsZero() && req.DueDate.Before(time.Now().Truncate(24*time.Hour)) {
+		s.logger.Warnf("Task creation failed: due date in the past for user: %s", req.UserID)
+		return nil, errors.New("due date cannot be in the past")
+	}
+
 	user, err := s.userRepo.FindByID(req.UserID)
 	if err != nil {
 		s.logger.Errorf(err, "Failed to verify user: %s", req.UserID)
@@ -49,9 +54,10 @@ func (s *Service) CreateTask(req dto.CreateTaskRequest) (*domain.Task, error) {
 		return nil, domain.ErrUserNotFound
 	}
 
+	newID := uuid.New()
 	now := time.Now()
 	task := &domain.Task{
-		ID:          uuid.New(),
+		ID:          newID,
 		UserID:      req.UserID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -66,6 +72,8 @@ func (s *Service) CreateTask(req dto.CreateTaskRequest) (*domain.Task, error) {
 		s.logger.Errorf(err, "Failed to create task in database for user: %s", req.UserID)
 		return nil, domain.ErrFailedToCreateTask
 	}
+
+	task.ID = newID
 
 	s.logger.Successf("Task created successfully - ID: %s, Title: %s, User: %s", task.ID, task.Title, req.UserID)
 	return task, nil
@@ -132,18 +140,22 @@ func (s *Service) UpdateTask(taskID, userID uuid.UUID, req dto.UpdateTaskRequest
 	}
 
 	if req.Status != nil {
+		statusVal := *req.Status
+
 		validStatus := map[string]bool{
 			domain.TaskStatusPending:    true,
 			domain.TaskStatusInProgress: true,
 			domain.TaskStatusCompleted:  true,
 			domain.TaskStatusCancelled:  true,
 		}
-		if !validStatus[*req.Status] {
-			s.logger.Warnf("Task update failed: invalid status value: %s", *req.Status)
-			return nil, errors.New("invalid status value")
+
+		if !validStatus[statusVal] {
+			s.logger.Warnf("Task update failed: invalid status value: %s", statusVal)
+			return nil, fmt.Errorf("invalid status value: %s", statusVal)
 		}
-		task.Status = *req.Status
-		s.logger.Debugf("Task status updated to: %s", *req.Status)
+
+		task.Status = statusVal
+		s.logger.Debugf("Task status updated to: %s", statusVal)
 	}
 
 	task.UpdatedAt = time.Now()
@@ -301,18 +313,22 @@ func (s *Service) AdminUpdateTask(taskID uuid.UUID, req dto.AdminUpdateTaskReque
 	}
 
 	if req.Status != nil {
+		statusVal := *req.Status
+
 		validStatus := map[string]bool{
 			domain.TaskStatusPending:    true,
 			domain.TaskStatusInProgress: true,
 			domain.TaskStatusCompleted:  true,
 			domain.TaskStatusCancelled:  true,
 		}
-		if !validStatus[*req.Status] {
-			s.logger.Warnf("Admin: Task update failed: invalid status value: %s", *req.Status)
-			return nil, errors.New("invalid status value")
+
+		if !validStatus[statusVal] {
+			s.logger.Warnf("Task update failed: invalid status value: %s", statusVal)
+			return nil, fmt.Errorf("invalid status value: %s", statusVal)
 		}
-		task.Status = *req.Status
-		s.logger.Debugf("Admin: Task status updated to: %s", *req.Status)
+
+		task.Status = statusVal
+		s.logger.Debugf("Task status updated to: %s", statusVal)
 	}
 
 	task.UpdatedAt = time.Now()

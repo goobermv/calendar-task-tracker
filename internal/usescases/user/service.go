@@ -161,10 +161,12 @@ func (s *Service) UpdateUserInfo(userID uuid.UUID, req dto.UpdateUserInfoRequest
 	if req.Email != nil {
 		s.logger.Debugf("Checking email availability: %s", *req.Email)
 		existing_email, _ := s.userRepo.FindByEmail(*req.Email)
-		if existing_email != nil {
-			s.logger.Warnf("Email already taken: %s", *req.Email)
+
+		if existing_email != nil && existing_email.ID != userID {
+			s.logger.Warnf("Email already taken by another user: %s", *req.Email)
 			return nil, domain.ErrEmailExists
 		}
+
 		user.Email = *req.Email
 		s.logger.Infof("Email updated to: %s for user: %s", *req.Email, userID)
 	}
@@ -172,10 +174,12 @@ func (s *Service) UpdateUserInfo(userID uuid.UUID, req dto.UpdateUserInfoRequest
 	if req.Username != nil {
 		s.logger.Debugf("Checking username availability: %s", *req.Username)
 		existing_user, _ := s.userRepo.FindByUsername(*req.Username)
-		if existing_user != nil {
-			s.logger.Warnf("Username already taken: %s", *req.Username)
+
+		if existing_user != nil && existing_user.ID != userID {
+			s.logger.Warnf("Username already taken by another user: %s", *req.Username)
 			return nil, domain.ErrUsernameExists
 		}
+
 		user.Username = *req.Username
 		s.logger.Infof("Username updated to: %s for user: %s", *req.Username, userID)
 	}
@@ -196,30 +200,18 @@ func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswor
 
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
-		s.logger.Errorf(err, "Failed to find user for password update: %s", userID)
-		return fmt.Errorf("failed to find user by ID: %w", err)
+		return fmt.Errorf("failed to find user: %w", err)
 	}
 	if user == nil {
-		s.logger.Warnf("User not found for password update: %s", userID)
 		return domain.ErrUserNotFound
 	}
 
-	if user.ID != userID {
-		s.logger.Warnf("User ID mismatch for password update - expected: %s, got: %s", userID, user.ID)
-		return domain.ErrNoPermissionUpdateUser
-	}
-
-	if req.Password != nil {
+	if req.Password != nil && *req.Password != "" {
 		s.logger.Debugf("Hashing new password for user: %s", userID)
 		hashedPassword, err := s.passwordService.Hash(*req.Password)
 		if err != nil {
 			s.logger.Errorf(err, "Failed to hash new password for user: %s", userID)
 			return errors.New("failed to process password")
-		}
-
-		if user.PasswordHash == hashedPassword {
-			s.logger.Warnf("New password is same as old password for user: %s", userID)
-			return errors.New("new password cannot be the same as old password")
 		}
 
 		user.PasswordHash = hashedPassword
@@ -228,7 +220,7 @@ func (s *Service) UpdateUserPassword(userID uuid.UUID, req dto.UpdateUserPasswor
 	user.UpdatedAt = time.Now()
 
 	if err := s.userRepo.Update(user); err != nil {
-		s.logger.Errorf(err, "Failed to update password in database for user: %s", userID)
+		s.logger.Errorf(err, "Failed to update password in database: %s", userID)
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
@@ -316,4 +308,29 @@ func (s *Service) DemoteAdminToUser(userID uuid.UUID) error {
 
 	s.logger.Successf("Admin demoted to user successfully: %s (Email: %s)", userID, user.Email)
 	return nil
+}
+
+func (s *Service) AdminGetAllUsers() ([]dto.UserResponse, error) {
+	s.logger.Info("Admin: Fetching all users from database")
+
+	users, err := s.userRepo.FindAll()
+	if err != nil {
+		s.logger.Errorf(err, "Admin failed to fetch users")
+		return nil, fmt.Errorf("failed to fetch users: %w", err)
+	}
+
+	var response []dto.UserResponse
+	for _, u := range users {
+		response = append(response, dto.UserResponse{
+			ID:        u.ID,
+			Email:     u.Email,
+			Username:  u.Username,
+			UserType:  u.UserType,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+		})
+	}
+
+	s.logger.Successf("Admin: Successfully retrieved %d users", len(response))
+	return response, nil
 }
