@@ -166,17 +166,24 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
-	requestingUserID, exists := middleware.GetUserID(c)
-	if exists {
-		HandleError(c, domain.ErrCannotPromoteYourself)
-		return
-	}
+	adminID, exists := middleware.GetUserID(c)
 	if !exists {
 		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
-	err := h.userService.PromoteUserToAdmin(requestingUserID)
+	targetUserID, exists := middleware.GetID(c)
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or missing user ID in path"})
+		return
+	}
+
+	if adminID == targetUserID {
+		HandleError(c, domain.ErrCannotPromoteYourself)
+		return
+	}
+
+	err := h.userService.PromoteUserToAdmin(targetUserID)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -184,22 +191,29 @@ func (h *UserHandler) PromoteUserToAdmin(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User promoted to admin successfully",
-		"user_id": requestingUserID.String(),
+		"user_id": targetUserID.String(),
 	})
 }
 
 func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
-	requestingUserID, exists := middleware.GetUserID(c)
-	if exists {
-		HandleError(c, domain.ErrCannotDemoteYourself)
-		return
-	}
+	adminID, exists := middleware.GetUserID(c)
 	if !exists {
 		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
-	err := h.userService.DemoteAdminToUser(requestingUserID)
+	targetUserID, exists := middleware.GetID(c)
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or missing user ID in path"})
+		return
+	}
+
+	if adminID == targetUserID {
+		HandleError(c, domain.ErrCannotDemoteYourself)
+		return
+	}
+
+	err := h.userService.DemoteAdminToUser(targetUserID)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -207,6 +221,16 @@ func (h *UserHandler) DemoteAdminToUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Admin demoted to user successfully",
-		"user_id": requestingUserID.String(),
+		"user_id": targetUserID.String(),
 	})
+}
+
+func (h *UserHandler) AdminGetAllUsers(c *gin.Context) {
+	users, err := h.userService.AdminGetAllUsers()
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
 }

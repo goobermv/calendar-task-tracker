@@ -8,7 +8,7 @@ import (
 
 const (
 	TaskStatusPending    = "pending"
-	TaskStatusInProgress = "in progress"
+	TaskStatusInProgress = "in_progress"
 	TaskStatusCompleted  = "completed"
 	TaskStatusCancelled  = "cancelled"
 )
@@ -21,13 +21,13 @@ const (
 )
 
 type Task struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	Title       string
-	Description string
-	Status      string
-	Priority    string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DueDate     time.Time
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	Priority    string    `json:"priority"`
+	DueDate     time.Time `json:"due_date"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
