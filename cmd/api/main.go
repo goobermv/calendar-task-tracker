@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/auth"
 	"github.com/goobermv/calendar-task-tracker/internal/infrastructure/config"
@@ -43,9 +44,9 @@ func main() {
 	taskRepo := postgres.NewTaskRepository(db.GetDB())
 	eventRepo := postgres.NewEventRepository(db.GetDB())
 
-	userService := userUsecases.NewService(userRepo, passwordService, jwtService)
-	taskService := taskUsecases.NewService(taskRepo, userRepo)
-	eventService := eventUsecases.NewService(eventRepo, userRepo)
+	userService := userUsecases.NewService(userRepo, passwordService, jwtService, appLogger)
+	taskService := taskUsecases.NewService(taskRepo, userRepo, appLogger)
+	eventService := eventUsecases.NewService(eventRepo, userRepo, appLogger)
 
 	userHandler := handlers.NewUserHandler(userService)
 	taskHandler := handlers.NewTaskHandler(taskService)
@@ -55,6 +56,17 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(gin.Logger())
 
+	corsConfig := cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: false,
+		MaxAge:           12 * time.Hour,
+	}
+
+	router.Use(cors.New(corsConfig))
+
 	api.SetupRoutes(router, userHandler, taskHandler, eventHandler, jwtService)
 
 	server := &http.Server{
@@ -63,7 +75,7 @@ func main() {
 	}
 
 	go func() {
-		appLogger.Infof("Server starting", "port", cfg.ServerPort)
+		appLogger.Infof("Server starting on port: %s", cfg.ServerPort)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			appLogger.Fatalf("Server failed to start", "error", err)
 		}

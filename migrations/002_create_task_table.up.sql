@@ -21,7 +21,7 @@ CREATE TRIGGER update_tasks_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 ALTER TABLE tasks ADD CONSTRAINT chk_tasks_status
-    CHECK (status IN ('pending', 'in progress', 'completed', 'cancelled'));
+    CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled'));
 
 ALTER TABLE tasks ADD CONSTRAINT chk_tasks_priority
     CHECK (priority IN ('low', 'medium', 'high', 'urgent'));

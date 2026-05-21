@@ -23,28 +23,43 @@ func SetupRoutes(
 			authGroup.POST("/register", userHandler.Register)
 			authGroup.POST("/login", userHandler.Login)
 		}
-	}
 
-	protected := v1.Group("/")
-	protected.Use(middleware.AuthMiddleware(jwtService))
-	{
-		protected.GET("/users/me", userHandler.GetProfile)
+		protected := v1.Group("/")
+		protected.Use(middleware.AuthMiddleware(jwtService))
+		{
+			protected.GET("/users/me", userHandler.GetProfile)
+			protected.PATCH("/users/:id", userHandler.UpdateUserInfo)
+			protected.PATCH("/users/:id/password", userHandler.UpdateUserPassword)
+			protected.DELETE("/users/:id", userHandler.DeleteUser)
 
-		protected.GET("/tasks", taskHandler.GetTask)
-		// protected.GET("/tasks", taskHandler.GetUserTasks)
-		protected.POST("/tasks", taskHandler.CreateTask)
-		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
-		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
-		// protected.PATCH("/tasks/:id/complete", taskHandler.CompleteTask)
+			protected.GET("/tasks", taskHandler.GetUserTasks)
+			protected.GET("/tasks/:id", taskHandler.GetTask)
+			protected.POST("/tasks", taskHandler.CreateTask)
+			protected.PUT("/tasks/:id", taskHandler.UpdateTask)
+			protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
 
-		protected.GET("/events", eventHandler.GetEvent)
-		// protected.GET("/events", taskHandler.GetUserEvents)
-		protected.POST("/events", eventHandler.CreateEvent)
-		protected.PUT("/events/:id", eventHandler.UpdateEvent)
-		protected.DELETE("/events/:id", eventHandler.DeleteEvent)
+			protected.GET("/events", eventHandler.GetUserEvents)
+			protected.GET("/events/:id", eventHandler.GetEvent)
+			protected.POST("/events", eventHandler.CreateEvent)
+			protected.PUT("/events/:id", eventHandler.UpdateEvent)
+			protected.DELETE("/events/:id", eventHandler.DeleteEvent)
 
-		// Calendar routes (to be implemented)
-		// protected.GET("/calendar", calendarHandler.GetCalendar)
+			adminGroup := protected.Group("/admin")
+			adminGroup.Use(middleware.AdminOnly())
+			{
+				adminGroup.POST("/users/:id/promote", userHandler.PromoteUserToAdmin)
+				adminGroup.POST("/users/:id/demote", userHandler.DemoteAdminToUser)
+				adminGroup.GET("/users", userHandler.AdminGetAllUsers)
+
+				adminGroup.GET("/tasks", taskHandler.AdminGetAllTasks)
+				adminGroup.PUT("/tasks/:id", taskHandler.AdminUpdateTask)
+				adminGroup.DELETE("/tasks/:id", taskHandler.AdminDeleteTask)
+
+				adminGroup.GET("/events", eventHandler.AdminGetAllEvents)
+				adminGroup.PUT("/events/:id", eventHandler.AdminUpdateEvents)
+				adminGroup.DELETE("/events/:id", eventHandler.AdminDeleteEvents)
+			}
+		}
 	}
 
 	router.GET("/health", func(c *gin.Context) {

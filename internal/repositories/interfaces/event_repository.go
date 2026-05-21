@@ -12,6 +12,8 @@ type EventRepository interface {
 	FindByID(id uuid.UUID) (*domain.Event, error)
 	FindByTitle(title string) ([]*domain.Event, error)
 	FindByDate(start, end time.Time) ([]*domain.Event, error)
+	FindByUserID(id uuid.UUID, limit, offset int) ([]*domain.Event, int, error)
 	Update(task *domain.Event) error
 	Delete(id uuid.UUID) error
+	FindAll(limit, offset int) ([]*domain.Event, int, error)
 }

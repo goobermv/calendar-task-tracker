@@ -93,7 +93,7 @@ func (r *UserRepository) FindByEmail(email string) (*domain.User, error) {
 	return user, nil
 }
 
-func (r *UserRepository) Update(user *domain.User, id uuid.UUID) error { // think about whether id uuid.UUID is actually needed here and how to update each field individaully
+func (r *UserRepository) Update(user *domain.User) error {
 	user.UpdatedAt = time.Now()
 
 	query := `UPDATE users
@@ -134,4 +134,34 @@ func (r *UserRepository) Delete(id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (r *UserRepository) FindAll() ([]*domain.User, error) {
+	query := `
+        SELECT id, email, username, password, usertype, created_at, updated_at 
+        FROM users
+        ORDER BY created_at DESC
+    `
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute find all users query: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+	for rows.Next() {
+		user := &domain.User{}
+		err := rows.Scan(&user.ID, &user.Email, &user.Username, &user.PasswordHash, &user.UserType, &user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+
+	return users, nil
 }

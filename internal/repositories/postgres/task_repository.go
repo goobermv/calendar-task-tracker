@@ -23,7 +23,7 @@ func (r *TaskRepository) Create(task *domain.Task) error {
 	task.UpdatedAt = now
 
 	query := `INSERT INTO tasks (id, user_id, title, description, status, priority, created_at, updated_at, due_date) 
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := r.db.Exec(query, task.ID, task.UserID, task.Title, task.Description, task.Status, task.Priority, task.CreatedAt, task.UpdatedAt, task.DueDate)
 	if err != nil {
@@ -36,8 +36,8 @@ func (r *TaskRepository) FindByID(id uuid.UUID) (*domain.Task, error) {
 	task := &domain.Task{}
 
 	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
-			  FROM tasks
-			  WHERE id = $1`
+              FROM tasks
+              WHERE id = $1`
 
 	err := r.db.QueryRow(query, id).Scan(
 		&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.CreatedAt, &task.UpdatedAt, &task.DueDate,
@@ -56,8 +56,8 @@ func (r *TaskRepository) FindByTitle(title string) ([]*domain.Task, error) {
 	tasks := []*domain.Task{}
 
 	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
-			  FROM tasks
-			  WHERE title = $1`
+              FROM tasks
+              WHERE title = $1`
 
 	rows, err := r.db.Query(query, title)
 	if err != nil {
@@ -92,8 +92,8 @@ func (r *TaskRepository) FindByDate(date time.Time) ([]*domain.Task, error) {
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
-			  FROM tasks
-			  WHERE due_date >= $1 AND due_date < $2`
+              FROM tasks
+              WHERE due_date >= $1 AND due_date < $2`
 
 	rows, err := r.db.Query(query, startOfDay, endOfDay)
 	if err != nil {
@@ -121,12 +121,59 @@ func (r *TaskRepository) FindByDate(date time.Time) ([]*domain.Task, error) {
 	return tasks, nil
 }
 
+func (r *TaskRepository) FindByUserID(id uuid.UUID, limit, offset int) ([]*domain.Task, int, error) {
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM tasks WHERE user_id = $1`
+	err := r.db.QueryRow(countQuery, id).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count user tasks: %w", err)
+	}
+
+	tasks := []*domain.Task{}
+
+	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
+              FROM tasks
+              WHERE user_id = $1
+              ORDER BY 
+                CASE 
+                    WHEN due_date IS NULL THEN 1 
+                    ELSE 0
+                END,
+                due_date ASC
+              LIMIT $2 OFFSET $3`
+
+	rows, err := r.db.Query(query, id, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to execute query for user tasks: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		task := &domain.Task{}
+
+		err = rows.Scan(
+			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.CreatedAt, &task.UpdatedAt, &task.DueDate,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error while scanning user tasks rows: %w", err)
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error after iterating user tasks rows: %w", err)
+	}
+
+	return tasks, totalCount, nil
+}
+
 func (r *TaskRepository) Update(task *domain.Task) error {
 	task.UpdatedAt = time.Now()
 
 	query := `UPDATE tasks
-			  SET title = $2, description = $3, status = $4, priority = $5, updated_at = $6, due_date = $7
-			  WHERE id = $1`
+              SET title = $2, description = $3, status = $4, priority = $5, updated_at = $6, due_date = $7
+              WHERE id = $1`
 
 	result, err := r.db.Exec(query, task.ID, task.Title, task.Description, task.Status, task.Priority, task.UpdatedAt, task.DueDate)
 	if err != nil {
@@ -141,11 +188,11 @@ func (r *TaskRepository) Update(task *domain.Task) error {
 		return fmt.Errorf("task with id %s not found", task.ID)
 	}
 	return nil
-} // and whether other users have access to updated others' tasks + how to update each field individually
+}
 
 func (r *TaskRepository) Delete(id uuid.UUID) error {
 	query := `DELETE FROM tasks 
-			  WHERE id = $1`
+              WHERE id = $1`
 
 	result, err := r.db.Exec(query, id)
 	if err != nil {
@@ -161,4 +208,45 @@ func (r *TaskRepository) Delete(id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (r *TaskRepository) FindAll(limit, offset int) ([]*domain.Task, int, error) {
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM tasks`
+	err := r.db.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count all tasks: %w", err)
+	}
+
+	tasks := []*domain.Task{}
+
+	query := `SELECT id, user_id, title, description, status, priority, created_at, updated_at, due_date
+              FROM tasks
+              ORDER BY due_date DESC
+              LIMIT $1 OFFSET $2`
+
+	rows, err := r.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to execute query for all tasks: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		task := &domain.Task{}
+
+		err = rows.Scan(
+			&task.ID, &task.UserID, &task.Title, &task.Description, &task.Status, &task.Priority, &task.CreatedAt, &task.UpdatedAt, &task.DueDate,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error while scanning all tasks rows: %w", err)
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error after iterating all tasks rows: %w", err)
+	}
+
+	return tasks, totalCount, nil
 }

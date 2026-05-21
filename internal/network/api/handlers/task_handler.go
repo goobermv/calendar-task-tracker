@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/goobermv/calendar-task-tracker/internal/domain"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/dto"
 	"github.com/goobermv/calendar-task-tracker/internal/network/api/middleware"
 	taskUsecase "github.com/goobermv/calendar-task-tracker/internal/usescases/task"
-	"github.com/google/uuid"
 )
 
 type TaskHandler struct {
@@ -21,37 +22,19 @@ func NewTaskHandler(taskService *taskUsecase.Service) *TaskHandler {
 }
 
 func (h *TaskHandler) CreateTask(c *gin.Context) {
-	userIDStr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
 	var req dto.CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Validation failed",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		HandleError(c, err)
 		return
 	}
 
-	useCaseReq := taskUsecase.CreateTaskRequest{
+	useCaseReq := dto.CreateTaskRequest{
 		UserID:      userID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -61,296 +44,186 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 
 	task, err := h.taskService.CreateTask(useCaseReq)
 	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "user not found" {
-			statusCode = http.StatusNotFound
-		}
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   "Failed to create task",
-			Code:    statusCode,
-			Details: err.Error(),
-		})
+		HandleError(c, err)
 		return
 	}
 
-	response := dto.TaskResponse{
-		ID:          task.ID.String(),
-		UserID:      task.UserID.String(),
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   task.UpdatedAt,
-	}
-
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, task)
 }
 
 func (h *TaskHandler) GetTask(c *gin.Context) {
-	userIDStr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
-		return
-	}
-
-	taskIDStr := c.Param("id")
-	taskID, err := uuid.Parse(taskIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid task ID",
-			Code:    http.StatusBadRequest,
-			Details: "Task ID must be a valid UUID",
-		})
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
 		return
 	}
 
 	task, err := h.taskService.GetTaskByID(taskID, userID)
 	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "task not found" {
-			statusCode = http.StatusNotFound
-		} else if err.Error() == "you don't have permission to view this task" {
-			statusCode = http.StatusForbidden
-		}
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   "Failed to get task",
-			Code:    statusCode,
-			Details: err.Error(),
-		})
+		HandleError(c, err)
 		return
 	}
 
-	response := dto.TaskResponse{
-		ID:          task.ID.String(),
-		UserID:      task.UserID.String(),
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   task.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, task)
 }
 
-//implement GetUserTasks function handler
+func getPaginationParams(c *gin.Context) (int, int) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	return page, limit
+}
+
+func (h *TaskHandler) GetUserTasks(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		HandleError(c, domain.ErrUnauthorized)
+		return
+	}
+
+	page, limit := getPaginationParams(c)
+
+	tasks, totalCount, err := h.taskService.GetUserTasks(userID, page, limit)
+	if err != nil {
+		HandleError(c, domain.ErrFailedToGetUserTasks)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tasks":       tasks,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
+	})
+}
 
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
-	userIDStr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
-		return
-	}
-
-	taskIDStr := c.Param("id")
-	taskID, err := uuid.Parse(taskIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid task ID",
-			Code:    http.StatusBadRequest,
-			Details: "Task ID must be a valid UUID",
-		})
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
 		return
 	}
 
 	var req dto.UpdateTaskRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Validation failed",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+		HandleError(c, err)
 		return
 	}
 
-	useCaseReq := taskUsecase.UpdateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		Priority:    req.Priority,
-		DueDate:     req.DueDate,
-	}
-
-	task, err := h.taskService.UpdateTask(taskID, userID, useCaseReq)
+	task, err := h.taskService.UpdateTask(taskID, userID, req)
 	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "task not found" {
-			statusCode = http.StatusNotFound
-		} else if err.Error() == "you do not have the permissions to update this task" {
-			statusCode = http.StatusForbidden
-		}
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   "Failed to update task",
-			Code:    statusCode,
-			Details: err.Error(),
-		})
+		HandleError(c, err)
 		return
 	}
 
-	resonse := dto.TaskResponse{
-		ID:          task.ID.String(),
-		UserID:      task.UserID.String(),
-		Title:       task.Title,
-		Description: task.Description,
-		Status:      task.Status,
-		DueDate:     task.DueDate,
-		Priority:    task.Priority,
-		CreatedAt:   task.CreatedAt,
-		UpdatedAt:   task.UpdatedAt,
-	}
-
-	c.JSON(http.StatusOK, resonse)
+	c.JSON(http.StatusOK, task)
 }
 
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
-	userIDStr, exists := middleware.GetUserID(c)
+	userID, exists := middleware.GetUserID(c)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Details: "User not authenticated",
-		})
+		HandleError(c, domain.ErrUnauthorized)
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid user ID",
-			Code:    http.StatusBadRequest,
-			Details: err.Error(),
-		})
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
 		return
 	}
 
-	taskIDStr := c.Param("id")
-	taskID, err := uuid.Parse(taskIDStr)
+	err := h.taskService.DeleteTask(taskID, userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error:   "Invalid task ID",
-			Code:    http.StatusBadRequest,
-			Details: "Task ID must be a valid UUID",
-		})
-		return
-	}
-
-	err = h.taskService.DeleteTask(taskID, userID)
-	if err != nil {
-		statusCode := http.StatusBadRequest
-		if err.Error() == "task not found" {
-			statusCode = http.StatusNotFound
-		} else if err.Error() == "you do not have the permissions to delete this task" {
-			statusCode = http.StatusForbidden
-		}
-		c.JSON(statusCode, dto.ErrorResponse{
-			Error:   "Failed to delete task",
-			Code:    statusCode,
-			Details: err.Error(),
-		})
+		HandleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusNoContent, nil)
 }
 
-/*
-func (h *TaskHandler) CompleteTask(c *gin.Context) {
-    // 1. Get authenticated user ID
-    userIDStr, exists := middleware.GetUserID(c)
-    if !exists {
-        c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-            Error:   "Unauthorized",
-            Code:    http.StatusUnauthorized,
-            Details: "User not authenticated",
-        })
-        return
-    }
+func (h *TaskHandler) AdminGetAllTasks(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
 
-    userID, err := uuid.Parse(userIDStr)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-            Error:   "Invalid user ID",
-            Code:    http.StatusBadRequest,
-            Details: err.Error(),
-        })
-        return
-    }
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
 
-    // 2. Parse task ID from URL
-    taskIDStr := c.Param("id")
-    taskID, err := uuid.Parse(taskIDStr)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-            Error:   "Invalid task ID",
-            Code:    http.StatusBadRequest,
-            Details: "Task ID must be a valid UUID",
-        })
-        return
-    }
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		limit = 10
+	}
 
-    // 3. Execute use case
-    task, err := h.taskService.CompleteTask(taskID, userID)
-    if err != nil {
-        statusCode := http.StatusBadRequest
-        if err.Error() == "task not found" {
-            statusCode = http.StatusNotFound
-        } else if err.Error() == "you don't have permission to update this task" {
-            statusCode = http.StatusForbidden
-        }
-        c.JSON(statusCode, dto.ErrorResponse{
-            Error:   "Failed to complete task",
-            Code:    statusCode,
-            Details: err.Error(),
-        })
-        return
-    }
+	tasks, totalCount, err := h.taskService.AdminGetAllTasks(page, limit)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
 
-    // 4. Convert to response DTO
-    response := dto.TaskResponse{
-        ID:          task.ID.String(),
-        UserID:      task.UserID.String(),
-        Title:       task.Title,
-        Description: task.Description,
-        Status:      task.Status,
-        DueDate:     task.DueDate,
-        Priority:    task.Priority,
-        CreatedAt:   task.CreatedAt,
-        UpdatedAt:   task.UpdatedAt,
-    }
-
-    // 5. Send response
-    c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"tasks":       tasks,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
+	})
 }
-*/
+
+func (h *TaskHandler) AdminUpdateTask(c *gin.Context) {
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
+		return
+	}
+
+	var req dto.AdminUpdateTaskRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	task, err := h.taskService.AdminUpdateTask(taskID, req)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
+}
+
+func (h *TaskHandler) AdminDeleteTask(c *gin.Context) {
+	taskID, exists := middleware.GetID(c)
+	if !exists {
+		HandleError(c, domain.ErrTaskNotFound)
+		return
+	}
+
+	err := h.taskService.AdminDeleteTask(taskID)
+	if err != nil {
+		HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
