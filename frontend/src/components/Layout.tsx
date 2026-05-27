@@ -9,10 +9,12 @@ export const Layout: React.FC = () => {
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     
     const [username, setUsername] = useState(user?.username || '');
     const [email, setEmail] = useState(user?.email || '');
     const [newPassword, setNewPassword] = useState('');
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
     const modalButtonStyle = (isPrimary: boolean): React.CSSProperties => ({
         padding: '10px 20px',
@@ -60,8 +62,8 @@ export const Layout: React.FC = () => {
         }
     };
 
-    const handleSelfDelete = async () => {
-        if (!user?.id || !confirm("Удалить аккаунт навсегда?")) return;
+    const executeSelfDelete = async () => {
+        if (deleteConfirmText !== 'УДАЛИТЬ' || !user?.id) return;
         try {
             await usersApi.deleteAccount(user.id);
             handleLogout();
@@ -96,13 +98,13 @@ export const Layout: React.FC = () => {
                     )}
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-                        <button onClick={() => { setIsProfileModalOpen(true); setIsPasswordModalOpen(false); }} style={menuButtonStyle}>
+                        <button onClick={() => { setIsProfileModalOpen(true); setIsPasswordModalOpen(false); setIsDeleteModalOpen(false); }} style={menuButtonStyle}>
                             ✎ Редактировать профиль
                         </button>
-                        <button onClick={() => { setIsPasswordModalOpen(true); setIsProfileModalOpen(false); }} style={menuButtonStyle}>
+                        <button onClick={() => { setIsPasswordModalOpen(true); setIsProfileModalOpen(false); setIsDeleteModalOpen(false); }} style={menuButtonStyle}>
                             🔑 Сменить пароль
                         </button>
-                        <button onClick={handleSelfDelete} style={{ ...menuButtonStyle, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)' }}>
+                        <button onClick={() => { setIsDeleteModalOpen(true); setIsProfileModalOpen(false); setIsPasswordModalOpen(false); }} style={{ ...menuButtonStyle, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)' }}>
                             🗑️ Удалить аккаунт
                         </button>
                     </div>
@@ -116,7 +118,7 @@ export const Layout: React.FC = () => {
             </main>
 
             {/* Контейнер для модалок, чтобы они накладывались поверх контента */}
-            {(isProfileModalOpen || isPasswordModalOpen) && (
+            {(isProfileModalOpen || isPasswordModalOpen || isDeleteModalOpen) && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                     
                     {isProfileModalOpen && (
@@ -143,6 +145,49 @@ export const Layout: React.FC = () => {
                                 <button type="button" onClick={() => setIsPasswordModalOpen(false)} style={modalButtonStyle(false)}>Отмена</button>
                             </div>
                         </form>
+                    )}
+
+                    {/* НОВАЯ МОДАЛКА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ */}
+                    {isDeleteModalOpen && (
+                        <div style={{ backgroundColor: '#1e1e1e', padding: '30px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '15px', color: 'white', width: '350px', border: '1px solid #ef4444', textAlign: 'center' }}>
+                            <h3 style={{ color: '#ef4444', marginTop: 0 }}>Внимание!</h3>
+                            <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '10px' }}>
+                                Вы собираетесь удалить свой аккаунт безвозвратно. Для подтверждения введите слово <strong>УДАЛИТЬ</strong> заглавными буквами.
+                            </p>
+                            <input 
+                                type="text" 
+                                style={{ 
+                                    padding: '10px', 
+                                    textAlign: 'center', 
+                                    backgroundColor: '#2d2d38', 
+                                    color: 'white', 
+                                    border: `1px solid ${deleteConfirmText === 'УДАЛИТЬ' ? '#10b981' : '#4b5563'}`, 
+                                    borderRadius: '6px' 
+                                }} 
+                                placeholder="Введите УДАЛИТЬ" 
+                                value={deleteConfirmText} 
+                                onChange={e => setDeleteConfirmText(e.target.value)} 
+                            />
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
+                                <button 
+                                    onClick={executeSelfDelete} 
+                                    disabled={deleteConfirmText !== 'УДАЛИТЬ'}
+                                    style={{ 
+                                        ...modalButtonStyle(true), 
+                                        backgroundColor: deleteConfirmText === 'УДАЛИТЬ' ? '#ef4444' : '#ef444455', 
+                                        cursor: deleteConfirmText === 'УДАЛИТЬ' ? 'pointer' : 'not-allowed' 
+                                    }}
+                                >
+                                    Подтвердить
+                                </button>
+                                <button 
+                                    onClick={() => { setIsDeleteModalOpen(false); setDeleteConfirmText(''); }} 
+                                    style={modalButtonStyle(false)}
+                                >
+                                    Отмена
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </div>
             )}
